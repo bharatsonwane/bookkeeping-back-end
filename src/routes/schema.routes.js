@@ -3,7 +3,6 @@ import {
   SchemaCreateSchema,
   SchemaUpdateSchema,
   getSchemaDoc,
-  updateSchemaDoc,
 } from "../schemas/schema.schema.js";
 import { stringIdValidation } from "../schemas/common.schema.js";
 import {
@@ -12,6 +11,7 @@ import {
   getSchemaById,
   updateSchema,
   deleteSchema,
+  getEntriesBySchemaId,
 } from "../controllers/schema.controller.js";
 import RouteRegistrar from "../middleware/RouteRegistrar.js";
 import { authRoleMiddleware } from "../middleware/authRoleMiddleware.js";
@@ -51,7 +51,7 @@ registrar.get("/:id/entries", {
     paramsSchema: { id: stringIdValidation },
   },
   middleware: [authRoleMiddleware()],
-  controller: getSchemaDoc,
+  controller: getEntriesBySchemaId,
 });
 
 /**@description update schema by id  */

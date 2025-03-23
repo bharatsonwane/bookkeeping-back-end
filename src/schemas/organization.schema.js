@@ -1,3 +1,4 @@
+//@ts-ignore
 import { z } from "zod";
 import { docRegistry } from "../doc/openAPIDocumentGenerator.js";
 import { createApiResponse } from "../doc/openAPIDocumentGenerator.js";

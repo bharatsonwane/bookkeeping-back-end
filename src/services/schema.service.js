@@ -1,4 +1,5 @@
 import SchemaModel from "../models/Schema.js";
+import EntryModel from "../models/Entry.js";
 
 export default class Schema {
   constructor(reqObj) {
@@ -82,5 +83,8 @@ export default class Schema {
     return await SchemaModel.findByIdAndDelete(id);
   }
 
-  static async getEntriesBySchemaId(id) {}
+  static async getEntriesBySchemaId(id) {
+    const entries = await EntryModel.find({ schemaId: id });
+    return entries;
+  }
 }
