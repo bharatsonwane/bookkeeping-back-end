@@ -16,7 +16,6 @@ export const createSchema = async (req, res, next) => {
 export const createSchemaByAi = async (req, res, next) => {
   try {
     console.log("akshay123", req.body);
-    debugger
     const organizationId = req.user.organizationId;
 
     const { domain, description } = req.body;
@@ -25,13 +24,13 @@ export const createSchemaByAi = async (req, res, next) => {
       description,
       foodSchema
     );
-debugger
+    debugger;
     const newSchema = {
       ...generatedSchema,
       organizationId,
-    }
+    };
 
-    debugger
+    debugger;
     const schemaService = new Schema(newSchema);
     const schema = await schemaService.createSchema();
     res.status(201).send(schema);

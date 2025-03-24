@@ -60,7 +60,7 @@ registrar.get("/:id/columns", {
   requestSchema: {
     paramsSchema: { id: stringIdValidation },
   },
-  // middleware: [authRoleMiddleware()],
+  middleware: [authRoleMiddleware()],
   controller: getColumnsBySchemaId,
 });
 
