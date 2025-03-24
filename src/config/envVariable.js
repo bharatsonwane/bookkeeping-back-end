@@ -22,6 +22,7 @@ const envVariableSchema = z.object({
 
   /* auth */
   JWT_SECRET: z.string().min(6, "JWT_SECRET is mandatory"),
+  OPENAI_API_KEY: z.string().min(6, "OPENAI_API_KEY is mandatory"),
 });
 
 const getEnvVariable = () => {
@@ -42,6 +43,7 @@ const getEnvVariable = () => {
 
       /* auth */
       JWT_SECRET: process.env.JWT_SECRET,
+      OPENAI_API_KEY: process.env.OPENAI_API_KEY,
     };
 
     envVariableSchema.parse(environmentVariable);
