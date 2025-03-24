@@ -61,9 +61,16 @@ export const generateSchemaByAI = async (domain, description, sampleSchema) => {
 
     debugger;
     const content = response.choices[0].message.content.trim();
+
+    console.log("contentStart",)
+    console.log(content)
+    console.log("contentEnd",)
     const jsonContent = content.replace(/```json|```/g, "");
 
     const schema = JSON.parse(jsonContent);
+    console.log("schemaStart",)
+    console.log(schema)
+    console.log("schemaEnd",)
     debugger;
     return schema;
   } catch (error) {

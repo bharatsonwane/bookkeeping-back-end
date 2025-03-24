@@ -15,6 +15,7 @@ export default class Schema {
   async createSchema() {
     const schema = new SchemaModel({
       name: this.name,
+      label: this.label,
       version: this.version,
       children: this.children,
       organizationId: this.organizationId,

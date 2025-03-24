@@ -24,7 +24,6 @@ export const createSchemaByAi = async (req, res, next) => {
       description,
       foodSchema
     );
-    debugger;
     const newSchema = {
       ...generatedSchema,
       organizationId,
