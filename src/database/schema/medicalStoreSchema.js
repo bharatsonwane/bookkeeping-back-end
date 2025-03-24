@@ -24,6 +24,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Store ID",
@@ -37,6 +38,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Store Address",
@@ -44,6 +46,7 @@ export default {
               dataMappingName: "store.address",
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Store Contact",
@@ -57,6 +60,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
           ],
         },
@@ -90,6 +94,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
           ],
         },

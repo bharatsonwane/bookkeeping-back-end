@@ -24,6 +24,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Food ID",
@@ -37,6 +38,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Category",
@@ -49,6 +51,7 @@ export default {
               dataMappingName: "food.category",
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Cuisine",
@@ -62,6 +65,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Preparation Time",

@@ -1,5 +1,6 @@
 import express from "express";
 import {
+  SchemaCreateByAISchema,
   SchemaCreateSchema,
   SchemaUpdateSchema,
   getSchemaDoc,
@@ -12,6 +13,8 @@ import {
   updateSchema,
   deleteSchema,
   getEntriesBySchemaId,
+  getColumnsBySchemaId,
+  createSchemaByAi,
 } from "../controllers/schema.controller.js";
 import RouteRegistrar from "../middleware/RouteRegistrar.js";
 import { authRoleMiddleware } from "../middleware/authRoleMiddleware.js";
@@ -31,6 +34,13 @@ registrar.post("/", {
   controller: createSchema,
 });
 
+registrar.post("/create-by-ai", {
+  requestSchema: { bodySchema: SchemaCreateByAISchema },
+  responseSchemas: [{ statusCode: 201, schema: SchemaCreateSchema }],
+  middleware: [authRoleMiddleware()],
+  controller: createSchemaByAi,
+});
+
 /**@description get all schemas  */
 registrar.get("/list", {
   openApiDoc: getSchemaDoc,
@@ -43,6 +53,15 @@ registrar.get("/:id", {
   requestSchema: { paramsSchema: { id: stringIdValidation } },
   middleware: [authRoleMiddleware()],
   controller: getSchemaById,
+});
+
+/**@description get schema entry by id*/
+registrar.get("/:id/columns", {
+  requestSchema: {
+    paramsSchema: { id: stringIdValidation },
+  },
+  // middleware: [authRoleMiddleware()],
+  controller: getColumnsBySchemaId,
 });
 
 /**@description get schema entry by id*/

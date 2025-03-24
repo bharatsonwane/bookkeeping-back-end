@@ -12,6 +12,7 @@ import streetFoodSchema from "./schema/streetFoodSchema.js";
 import medicalStoreSchema from "./schema/medicalStoreSchema.js";
 
 import transactionSchema from "./schema/transactionSchema.js";
+import Entry from "../models/Entry.js";
 
 async function main() {
   try {
@@ -23,6 +24,8 @@ async function main() {
     // Clear existing data
     await User.deleteMany({});
     await Organization.deleteMany({});
+    await Schema.deleteMany({});
+    await Entry.deleteMany({});
 
     const organizationList = [
       {

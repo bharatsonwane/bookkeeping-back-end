@@ -24,6 +24,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Transaction ID",
@@ -37,6 +38,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
             {
               label: "Transaction Bank",
@@ -50,6 +52,7 @@ export default {
               ],
               readOnly: false,
               isMultilingual: false,
+              isShowInTable: true,
             },
 
             {

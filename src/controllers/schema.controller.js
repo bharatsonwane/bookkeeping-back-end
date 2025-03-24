@@ -11,6 +11,17 @@ export const createSchema = async (req, res, next) => {
   }
 };
 
+export const createSchemaByAi = async (req, res, next) => {
+  try {
+    const organizationId = req.user.organizationId;
+    const schemaService = new Schema(req.body);
+    const schema = await schemaService.createSchema();
+    res.status(201).send(schema);
+  } catch (error) {
+    res.error(error);
+  }
+};
+
 export const getSchemas = async (req, res, next) => {
   try {
     if (req.user.userRole == "superAdmin") {
@@ -56,6 +67,18 @@ export const deleteSchema = async (req, res, next) => {
     const schemaId = req.params.id;
     await Schema.deleteSchema(schemaId);
     res.status(204).send();
+  } catch (error) {
+    res.error(error);
+  }
+};
+
+export const getColumnsBySchemaId = async (req, res, next) => {
+  try {
+    const schemaId = req.params.id;
+    const schema = await Schema.getSchemaById(schemaId);
+    const columns = Schema.getFieldsToShowInTable(schema);
+
+    res.status(200).send(columns);
   } catch (error) {
     res.error(error);
   }

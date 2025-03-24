@@ -12,6 +12,13 @@ export const SchemaCreateSchema = z.object({
 });
 docRegistry.register("SchemaCreate", SchemaCreateSchema);
 
+/**@description Schema Create schema by AI*/
+export const SchemaCreateByAISchema = z.object({
+  description: z.string().min(6),
+  // organizationId: z.string().min(1),
+});
+docRegistry.register("SchemaCreateByAi", SchemaCreateByAISchema);
+
 /**@description Schema Update schema */
 export const SchemaUpdateSchema = z.object({
   name: z.string().min(1).optional(),
