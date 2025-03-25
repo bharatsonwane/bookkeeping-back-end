@@ -47,7 +47,8 @@ export const generateSchemaByAI = async (description, sampleSchema) => {
     const prompt = `
     Generate a JSON schema for bookkeeping based on the following description:
     ${description}
-    The schema should include tabs, sub-tabs, sections, and fields with appropriate validation rules & isShowInTable flag.
+    The schema should include tabs, sub-tabs, sections, and fields with appropriate validation rules using Zod & isShowInTable flag.
+    The isShowInTable flag should appear a maximum of 5 times in the schema.
     Here is a sample schema for reference:
     ${JSON.stringify(sampleSchema, null, 2)}
     Please provide only the JSON schema in the response, without any additional information. Ensure the response is valid JSON.
