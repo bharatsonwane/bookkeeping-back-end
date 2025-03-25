@@ -15,21 +15,15 @@ export const createSchema = async (req, res, next) => {
 
 export const createSchemaByAi = async (req, res, next) => {
   try {
-    console.log("akshay123", req.body);
     const organizationId = req.user.organizationId;
 
-    const { domain, description } = req.body;
-    const generatedSchema = await generateSchemaByAI(
-      domain,
-      description,
-      foodSchema
-    );
+    const { description } = req.body;
+    const generatedSchema = await generateSchemaByAI(description, foodSchema);
     const newSchema = {
       ...generatedSchema,
       organizationId,
     };
 
-    debugger;
     const schemaService = new Schema(newSchema);
     const schema = await schemaService.createSchema();
     res.status(201).send(schema);

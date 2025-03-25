@@ -14,7 +14,6 @@ docRegistry.register("SchemaCreate", SchemaCreateSchema);
 
 /**@description Schema Create schema by AI*/
 export const SchemaCreateByAISchema = z.object({
-  domainName: z.string().min(3),
   description: z.string().min(6),
 });
 docRegistry.register("SchemaCreateByAi", SchemaCreateByAISchema);
