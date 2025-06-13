@@ -1,38 +1,31 @@
-module.exports = {
-  up: (pgm) => {
-    pgm.createTable("users", {
+export const up = (pgm) => {
+  pgm.createTable(
+    { schema: "main", name: "users" },
+    {
       id: {
-        type: "serial",
+        type: "uuid",
         primaryKey: true,
+        default: pgm.func("gen_random_uuid()"),
       },
       tenant_id: {
-        type: "integer",
+        type: "uuid",
         notNull: true,
-        references: "tenants(id)",
-        onDelete: "cascade",
+        references: { schema: "main", name: "tenant", column: "id" },
+        onDelete: "CASCADE",
       },
-      name: {
-        type: "varchar(100)",
-        notNull: true,
-      },
-      email: {
-        type: "varchar(150)",
-        notNull: true,
-        unique: true,
-      },
-      role: {
-        type: "varchar(50)",
-        notNull: true,
-        default: "user",
-      },
+      email: { type: "varchar(255)", notNull: true, unique: true },
+      password: { type: "varchar(255)", notNull: true },
       created_at: {
         type: "timestamp",
+        notNull: true,
         default: pgm.func("current_timestamp"),
       },
-    });
-  },
+    }
+  );
 
-  down: (pgm) => {
-    pgm.dropTable("users");
-  },
+  pgm.createIndex({ schema: "main", name: "users" }, "tenant_id");
+};
+
+export const down = (pgm) => {
+  pgm.dropTable({ schema: "main", name: "users" });
 };

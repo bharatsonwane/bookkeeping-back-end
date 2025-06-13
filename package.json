@@ -8,10 +8,10 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon --experimental-specifier-resolution=node index.js",
     "seed": "node --experimental-specifier-resolution=node src/database/seed.js",
-    "migrate:main": "node-pg-migrate --schema main --create-schema --dir ./src/database/migrations/main",
+    "migrate:main:up": "node-pg-migrate up --schema main --create-schema --dir ./src/database/migrations/main",
     "migrate:template:ecom": "node-pg-migrate --schema template_ecom --create-schema --dir ./src/database/migrations/template/ecom",
     "migrate:template:medical": "node-pg-migrate --schema template_medical --create-schema --dir ./src/database/migrations/template/medical",
-    "migrate": "node src/database/migrate.js"
+    "migrate": "node-pg-migrate -m src/database/migrations/main"
   },
   "author": "",
   "license": "ISC",
