@@ -18,7 +18,6 @@ const envVariableSchema = z.object({
   // DB_PASSWORD: z.string().min(1, "DB_PASSWORD is mandatory"),
   // DB_NAME: z.string().min(1, "DB_NAME is mandatory"),
   // DB_PORT: z.number().min(1, "DB_PORT is mandatory"),
-  MONGO_URI: z.string().min(1, "MONGO_URI is mandatory"),
 
   /* auth */
   JWT_SECRET: z.string().min(6, "JWT_SECRET is mandatory"),
@@ -39,7 +38,6 @@ const getEnvVariable = () => {
       // DB_PASSWORD: process.env.DB_PASSWORD,
       // DB_NAME: process.env.DB_NAME,
       // DB_PORT: Number(process.env.DB_PORT),
-      MONGO_URI: process.env.MONGO_URI,
 
       /* auth */
       JWT_SECRET: process.env.JWT_SECRET,

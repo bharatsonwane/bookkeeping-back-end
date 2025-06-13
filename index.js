@@ -15,8 +15,6 @@ async function main() {
   /** define add */
   const app = express();
 
-  connectDB();
-  
   /** add middleware  */
   app.use(express.json());
   app.use(cors()); // Use the cors middleware
