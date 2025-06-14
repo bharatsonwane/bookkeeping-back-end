@@ -1,2 +1,0 @@
-CREATE TABLE
-    IF NOT EXISTS common.project3 (id SERIAL PRIMARY KEY, name TEXT NOT NULL);

@@ -13,11 +13,11 @@ const envVariableSchema = z.object({
   API_PORT: z.number().int().positive(),
 
   /* database */
-  // DB_HOST: z.string().min(3, "DB_HOST is mandatory"),
-  // DB_USER: z.string().min(3, "DB_USER is mandatory"),
-  // DB_PASSWORD: z.string().min(1, "DB_PASSWORD is mandatory"),
-  // DB_NAME: z.string().min(1, "DB_NAME is mandatory"),
-  // DB_PORT: z.number().min(1, "DB_PORT is mandatory"),
+  DB_HOST: z.string().min(3, "DB_HOST is mandatory"),
+  DB_USER: z.string().min(3, "DB_USER is mandatory"),
+  DB_PASSWORD: z.string().min(1, "DB_PASSWORD is mandatory"),
+  DB_NAME: z.string().min(1, "DB_NAME is mandatory"),
+  DB_PORT: z.number().min(1, "DB_PORT is mandatory"),
 
   /* auth */
   JWT_SECRET: z.string().min(6, "JWT_SECRET is mandatory"),

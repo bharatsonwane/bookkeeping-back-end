@@ -1,0 +1,24 @@
+
+-- Create tenants table
+CREATE TABLE tenants (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    domain VARCHAR(255) NOT NULL UNIQUE,
+    createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Create users table with foreign key to tenants
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    tenant_id INTEGER NOT NULL,
+    createdAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_tenant
+        FOREIGN KEY(tenant_id) 
+        REFERENCES tenants(id)
+        ON DELETE CASCADE
+);
+

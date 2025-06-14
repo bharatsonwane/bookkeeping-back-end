@@ -1,4 +1,5 @@
 // src/database/migrate.js
+// @ts-ignore
 import { Umzug } from "umzug";
 import fs from "fs/promises";
 import path from "path";
@@ -124,14 +125,72 @@ export const runMigrations = async (schemaName = "common") => {
 };
 
 export const runMigrationsForTenants = async () => {
-  /**@description  
-   * get all tenant from db apply migrations
-  */
+  const client = await db.getDbClient();
+
+  try {
+    // Get all tenants from public.tenants
+    const { rows: tenants } = await client.query(
+      "SELECT id, name FROM common.tenants"
+    );
+
+    if (!tenants.length) {
+      console.log("ℹ️ No tenants found in the database");
+      return;
+    }
+
+    console.log(`ℹ️ Found ${tenants.length} tenants to process migrations`);
+
+    // Process migrations for each tenant
+    for (const tenant of tenants) {
+      const schemaName = `tenant_${tenant.id}`;
+      console.log(
+        `ℹ️ Processing migrations for tenant: ${tenant.name} (${schemaName})`
+      );
+
+      try {
+        // Check if tenant's migration directory exists
+        const tenantMigrationDir = path.join(
+          __dirname,
+          `migrations/${schemaName}`
+        );
+        try {
+          await fs.access(tenantMigrationDir);
+        } catch (error) {
+          console.log(
+            `ℹ️ No migration directory found for tenant ${tenant.name}, skipping...`
+          );
+          continue;
+        }
+
+        // Run migrations for this tenant
+        await runMigrations(schemaName);
+      } catch (error) {
+        console.error(
+          `❌ Error processing migrations for tenant ${tenant.name}:`,
+          error
+        );
+        // Continue with next tenant even if one fails
+        continue;
+      }
+    }
+
+    console.log("✅ Completed processing migrations for all tenants");
+  } catch (error) {
+    console.error("❌ Error in runMigrationsForTenants:", error);
+    throw error;
+  }
 };
+/* 
+
+-- need to create one api with ui for create user with tenant
+-- Enroll page/signup
+-- login -> 
+-- schema ->
+*/
 
 const main = async () => {
-  await runMigrations();
-  await runMigrationsForTenants()
+  // await runMigrations();
+  await runMigrationsForTenants();
   await db.shutdown();
 };
 
