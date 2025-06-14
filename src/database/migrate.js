@@ -18,13 +18,13 @@ const extractVersion = (name) => {
   return match ? parseInt(match[1], 10) : null;
 };
 
-export const runMigrations = async (tenant = "common") => {
+export const runMigrations = async (schemaName = "common") => {
   const client = await db.getDbClient();
 
   // Ensure schema and migration tracking table exist
   await client.query(`
-    CREATE SCHEMA IF NOT EXISTS ${tenant};
-    CREATE TABLE IF NOT EXISTS ${tenant}.migrations (
+    CREATE SCHEMA IF NOT EXISTS ${schemaName};
+    CREATE TABLE IF NOT EXISTS ${schemaName}.migrations (
       version TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       md5 TEXT NOT NULL,
@@ -32,7 +32,9 @@ export const runMigrations = async (tenant = "common") => {
     );
   `);
 
-  const migrationDir = path.join(__dirname, `migrations/${tenant}`);
+  await client.query(`SET search_path TO ${schemaName}`);
+
+  const migrationDir = path.join(__dirname, `migrations/${schemaName}`);
   const files = await fs.readdir(migrationDir);
 
   const allMigrations = files
@@ -47,8 +49,10 @@ export const runMigrations = async (tenant = "common") => {
 
   // Get already executed versions
   const { rows: applied } = await client.query(
-    `SELECT version FROM ${tenant}.migrations ORDER BY version::int`
+    `SELECT version FROM migrations ORDER BY version::int`
   );
+  debugger;
+
   const appliedVersions = applied.map((r) => parseInt(r.version, 10));
   const lastAppliedVersion = appliedVersions.at(-1) ?? 0;
   const expectedNextVersion = lastAppliedVersion + 1;
@@ -82,7 +86,9 @@ export const runMigrations = async (tenant = "common") => {
     })),
     storage: {
       executed: async () => {
-        const res = await client.query(`SELECT name FROM ${tenant}.migrations`);
+        const res = await client.query(
+          `SELECT name FROM ${schemaName}.migrations`
+        );
         return res.rows.map((r) => r.name);
       },
       logMigration: async (migration) => {
@@ -90,7 +96,7 @@ export const runMigrations = async (tenant = "common") => {
         const version = extractVersion(name);
         const md5 = await getFileMd5(migrationPath);
         await client.query(
-          `INSERT INTO ${tenant}.migrations(version, name, md5) VALUES ($1, $2, $3)`,
+          `INSERT INTO ${schemaName}.migrations(version, name, md5) VALUES ($1, $2, $3)`,
           [version.toString(), name, md5]
         );
       },
@@ -101,7 +107,7 @@ export const runMigrations = async (tenant = "common") => {
             : migrationName;
         const version = extractVersion(name);
         await client.query(
-          `DELETE FROM ${tenant}.migrations WHERE version = $1`,
+          `DELETE FROM ${schemaName}.migrations WHERE version = $1`,
           [version.toString()]
         );
       },
@@ -114,15 +120,22 @@ export const runMigrations = async (tenant = "common") => {
   });
 
   await umzug.up();
-  console.log(`✅ Migrations completed for tenant: ${tenant}`);
+  console.log(`✅ Migrations completed for schemaName: ${schemaName}`);
 };
 
-const run = async () => {
+export const runMigrationsForTenants = async () => {
+  /**@description  
+   * get all tenant from db apply migrations
+  */
+};
+
+const main = async () => {
   await runMigrations();
+  await runMigrationsForTenants()
   await db.shutdown();
 };
 
-run().catch((err) => {
+main().catch((err) => {
   console.error("❌ Migration failed", err);
   process.exit(1);
 });
