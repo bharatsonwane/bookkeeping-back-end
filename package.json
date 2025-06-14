@@ -8,10 +8,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon --experimental-specifier-resolution=node index.js",
     "seed": "node --experimental-specifier-resolution=node src/database/seed.js",
-    "migrate:main:up": "node-pg-migrate up --schema main --create-schema --dir ./src/database/migrations/main",
-    "migrate:template:ecom": "node-pg-migrate --schema template_ecom --create-schema --dir ./src/database/migrations/template/ecom",
-    "migrate:template:medical": "node-pg-migrate --schema template_medical --create-schema --dir ./src/database/migrations/template/medical",
-    "migrate": "node-pg-migrate -m src/database/migrations/main"
+    "migrate": "node --experimental-specifier-resolution=node src/database/migrate.js"
   },
   "author": "",
   "license": "ISC",
@@ -28,13 +25,12 @@
     "mongoose": "^8.12.1",
     "openai": "^4.89.0",
     "pg": "^8.13.1",
-    "postgrator": "^8.0.0",
     "swagger-ui-express": "^5.0.1",
+    "umzug": "^3.8.2",
     "zod": "^3.24.1",
     "zod-validation-error": "^3.4.0"
   },
   "devDependencies": {
-    "node-pg-migrate": "^8.0.2",
     "nodemon": "^3.1.7"
   }
 }
