@@ -20,27 +20,7 @@ const productListSchema = {
   label: "Dashboard Schema",
   type: "schema",
   version: "1.0",
-  children: [
-    {
-      type: "get",
-      query: () => {
-        const query = `
-          SELECT name, "description", "price" from products;
-          `;
-        return query;
-      },
-    },
-
-    {
-      type: "post",
-      query: () => {
-        const query = `
-          SELECT name, "description", "price" from products;
-          `;
-        return query;
-      },
-    },
-  ],
+  children: [],
 };
 
 const productListQuerySchema = {
@@ -48,6 +28,17 @@ const productListQuerySchema = {
   label: "Dashboard Schema",
   type: "querySchema",
   version: "1.0",
+  queries: [
+    {
+      type: "get",
+      query: () => `SELECT name, "description", "price" from products;`,
+    },
+
+    {
+      type: "post",
+      query: () => `SELECT name, "description", "price" from products;`,
+    },
+  ],
 };
 
 const productDetail = {
