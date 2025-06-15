@@ -12,7 +12,7 @@ class RouteRegistrar {
   registerRoute(
     method,
     path,
-    { middleware = [], controller , openApiDoc, requestSchema,  responseSchemas}
+    { middleware = [], controller, openApiDoc, requestSchema, responseSchemas }
   ) {
     const fullRoutePath = `${this.basePath}${path}`;
 
@@ -24,7 +24,7 @@ class RouteRegistrar {
       method,
       tags: this.tags,
       requestSchema,
-      responseSchemas
+      responseSchemas,
     };
 
     if (middleware?.length > 0) {

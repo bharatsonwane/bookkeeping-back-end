@@ -10,6 +10,7 @@ import openApiRoutes from "./src/doc/openApiRoutes.js";
 import responseHandler from "./src/middleware/responseHandler.js";
 import logger from "./src/helper/logger.js";
 import connectDB from "./src/database/db.js";
+import { dbClientMiddleware } from "./src/middleware/dbClientMiddleware.js";
 
 async function main() {
   /** define add */
@@ -28,7 +29,7 @@ async function main() {
     );
   });
 
-  app.use("/", routes); // App Main Routes
+  app.use("/", dbClientMiddleware, routes); // App Main Routes
 
   // Swagger Doc UI
   app.use("/docs", openApiRoutes);

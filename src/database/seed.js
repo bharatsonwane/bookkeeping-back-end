@@ -13,11 +13,7 @@ export const seed = async () => {
       },
       users: [
         {
-          username: "john.doe",
-          password: "Password@123",
-        },
-        {
-          username: "jane.doe",
+          email: "john@gmail.com",
           password: "Password@123",
         },
       ],
@@ -29,7 +25,7 @@ export const seed = async () => {
       },
       users: [
         {
-          username: "alice.smith",
+          email: "smith@gmail.com",
           password: "Password@123",
         },
       ],
@@ -54,12 +50,12 @@ export const seed = async () => {
       logger.info(`Inserted tenant: ${tenant.name} (id: ${tenantId})`);
 
       for (const user of users) {
-        const hashPassword = getHashPassword(user.password);
+        const hashPassword = await getHashPassword(user.password);
         await client.query(
-          `INSERT INTO users (username, password, tenant_id) VALUES ($1, $2, $3)`,
-          [user.username, hashPassword, tenantId]
+          `INSERT INTO users (email, password, "tenantId") VALUES ($1, $2, $3)`,
+          [user.email, hashPassword, tenantId]
         );
-        logger.info(`  ↳ Inserted user: ${user.username}`);
+        logger.info(`  ↳ Inserted user: ${user.email}`);
       }
     }
 

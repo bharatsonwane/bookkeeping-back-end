@@ -60,14 +60,29 @@ class Database {
     }
   }
 
-  async transaction() {
+  async getSchemaClient(schemaName) {
     const client = await this.getDbPool().connect();
     try {
+      await client.query(`SET search_path TO ${schemaName}, public`);
+      return client;
+    } catch (error) {
+      client.release();
+      logger.error(`Failed to set schema "${schemaName}"`, error);
+      throw error;
+    }
+  }
+
+  async transaction(schemaName) {
+    const client = await this.getDbPool().connect();
+    try {
+      await client.query(`SET search_path TO ${schemaName}, public`);
       await client.query("BEGIN");
+
       const commit = async () => {
         await client.query("COMMIT");
         client.release(true);
       };
+
       const rollback = async () => {
         await client.query("ROLLBACK");
         client.release(true);
@@ -75,8 +90,8 @@ class Database {
 
       return { client, commit, rollback };
     } catch (error) {
-      logger.error("Database Transaction Error:", error);
       client.release(true);
+      logger.error("Transaction Error:", error);
       throw error;
     }
   }
