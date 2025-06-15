@@ -1,148 +1,78 @@
-import logger from "../helper/logger.js";
-import connectDB from "./db.js";
 import { getHashPassword } from "../helper/authHelper.js";
-import Organization from "../models/Organization.js";
-import User from "../models/User.js";
-import Schema from "../models/Schema.js";
+import logger from "../helper/logger.js";
+import db from "./db.js";
 
-import foodSchema from "./schema/foodSchema.js";
-import fastFoodSchema from "./schema/fastFoodSchema.js";
-import streetFoodSchema from "./schema/streetFoodSchema.js";
+export const seed = async () => {
+  const client = await db.getDbClient();
 
-import medicalStoreSchema from "./schema/medicalStoreSchema.js";
+  const tenantList = [
+    {
+      tenant: {
+        name: "Acme Corp",
+        domain: "acme.example.com",
+      },
+      users: [
+        {
+          username: "john.doe",
+          password: "Password@123",
+        },
+        {
+          username: "jane.doe",
+          password: "Password@123",
+        },
+      ],
+    },
+    {
+      tenant: {
+        name: "Globex Inc",
+        domain: "globex.example.org",
+      },
+      users: [
+        {
+          username: "alice.smith",
+          password: "Password@123",
+        },
+      ],
+    },
+  ];
 
-import transactionSchema from "./schema/transactionSchema.js";
-import Entry from "../models/Entry.js";
-
-async function main() {
   try {
-    // Connect to database
-    await connectDB();
+    await client.query("BEGIN");
 
-    console.log("Seeding database...");
+    // 👇 Set the default schema to 'common'
+    await client.query("SET search_path TO common");
 
-    // Clear existing data
-    await User.deleteMany({});
-    await Organization.deleteMany({});
-    await Schema.deleteMany({});
-    await Entry.deleteMany({});
+    for (const entry of tenantList) {
+      const { tenant, users } = entry;
 
-    const organizationList = [
-      {
-        name: "bookkeeping",
-        details: "A bookkeeping organization.",
-        schemas: [],
-        users: [
-          {
-            name: `Bharat Sonwane`,
-            email: `bharat@gmail.com`,
-            password: "Super@123",
-            role: "superAdmin",
-          },
-        ],
-      },
-      {
-        name: "Food Corporation Pvt. Ltd.",
-        details: "A food-focused organization.",
-        schemas: [foodSchema, fastFoodSchema, streetFoodSchema],
-        users: [
-          {
-            name: `Akshay Sonwane`,
-            email: `akshay@gmail.com`,
-            password: "Password@123",
-            role: "admin",
-          },
-          {
-            name: "Yogesh Muli",
-            email: "yogesh@gmail.com",
-            password: "Password@123",
-            role: "admin",
-          },
-        ],
-      },
-      {
-        name: "Health Solutions",
-        details: "A healthcare service provider.",
-        schemas: [medicalStoreSchema],
-        users: [
-          {
-            name: "Shreyesh Kholhe",
-            email: "shreyesh@gmail.com",
-            password: "Password@123",
-            role: "superAdmin",
-          },
-          {
-            name: "Kunal Kamat",
-            email: "kunal@gmail.com",
-            password: "Password@123",
-            role: "admin",
-          },
-        ],
-      },
-      {
-        name: "Bank of India",
-        details: "A banking organization.",
-        schemas: [transactionSchema],
-        users: [
-          {
-            name: "Sagar Kadam",
-            email: "sagar@gmail.com",
-            password: "Password@123",
-            role: "superAdmin",
-          },
-        ],
-      },
-    ];
+      const tenantResult = await client.query(
+        `INSERT INTO tenants (name, domain) VALUES ($1, $2) RETURNING id`,
+        [tenant.name, tenant.domain]
+      );
 
-    // Create organizations
+      const tenantId = tenantResult.rows[0].id;
+      logger.info(`Inserted tenant: ${tenant.name} (id: ${tenantId})`);
 
-    // for loop
-    for (let i = 0; i < organizationList.length; i++) {
-      const organization = organizationList[i];
-      const org = await Organization.create({
-        name: organization.name,
-        details: organization.details,
-        schemas: organization.schemas,
-      });
-
-      console.log("Organization created:", org.name);
-
-      // Create users for the organization
-      for (let j = 0; j < organization.users.length; j++) {
-        const user = organization.users[j];
-        const hashedPassword = await getHashPassword(user.password);
-        await User.create({
-          name: user.name,
-          email: user.email,
-          passwordHash: hashedPassword,
-          role: user.role,
-          organizationId: org._id,
-        });
-      }
-      console.log("Users created for the organization:", org.name);
-
-      for (let j = 0; j < organization.schemas.length; j++) {
-        const schema = organization.schemas[j];
-        await Schema.create({
-          name: schema.name,
-          label: schema.label,
-          version: schema.version,
-          type: schema.type,
-          children: schema.children,
-          organizationId: org._id,
-        });
+      for (const user of users) {
+        const hashPassword = getHashPassword(user.password);
+        await client.query(
+          `INSERT INTO users (username, password, tenant_id) VALUES ($1, $2, $3)`,
+          [user.username, hashPassword, tenantId]
+        );
+        logger.info(`  ↳ Inserted user: ${user.username}`);
       }
     }
 
-    console.log("Users created successfully!");
-
-    console.log("Database seeded successfully!");
+    await client.query("COMMIT");
+    logger.info("✅ Seeding completed successfully!");
   } catch (error) {
-    logger.error("Error occurred during seeding:", error);
+    await client.query("ROLLBACK");
+    logger.error("❌ Error occurred during seeding:", error);
   } finally {
-    logger.info("Seeding reached to finally!");
+    client.release?.();
+    logger.info("Seeding reached finally block!");
     process.exit();
   }
-}
+};
 
-main();
+seed();
