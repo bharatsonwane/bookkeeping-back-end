@@ -48,49 +48,49 @@ class Database {
   }
 
   async query(text, params) {
-    const client = await this.getDbPool().connect();
+    const pool = await this.getDbPool().connect();
     try {
-      const result = await client.query(text, params);
+      const result = await pool.query(text, params);
       return result.rows;
     } catch (error) {
       logger.error("Database Query Error:", error);
       throw error;
     } finally {
-      client.release(true); // true parameter forces the release even if there's an error
+      pool.release(true); // true parameter forces the release even if there's an error
     }
   }
 
-  async getSchemaClient(schemaName) {
-    const client = await this.getDbPool().connect();
+  async getSchemaPool(schemaName) {
+    const pool = await this.getDbPool().connect();
     try {
-      await client.query(`SET search_path TO ${schemaName}, public`);
-      return client;
+      await pool.query(`SET search_path TO ${schemaName}, public`);
+      return pool;
     } catch (error) {
-      client.release();
+      pool.release();
       logger.error(`Failed to set schema "${schemaName}"`, error);
       throw error;
     }
   }
 
   async transaction(schemaName) {
-    const client = await this.getDbPool().connect();
+    const pool = await this.getDbPool().connect();
     try {
-      await client.query(`SET search_path TO ${schemaName}, public`);
-      await client.query("BEGIN");
+      await pool.query(`SET search_path TO ${schemaName}, public`);
+      await pool.query("BEGIN");
 
       const commit = async () => {
-        await client.query("COMMIT");
-        client.release(true);
+        await pool.query("COMMIT");
+        pool.release(true);
       };
 
       const rollback = async () => {
-        await client.query("ROLLBACK");
-        client.release(true);
+        await pool.query("ROLLBACK");
+        pool.release(true);
       };
 
-      return { client, commit, rollback };
+      return { pool, commit, rollback };
     } catch (error) {
-      client.release(true);
+      pool.release(true);
       logger.error("Transaction Error:", error);
       throw error;
     }

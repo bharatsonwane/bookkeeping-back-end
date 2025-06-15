@@ -5,21 +5,21 @@ export async function dbClientMiddleware(req, res, next) {
   const tenantSchema = req.user?.schema || req.headers["x-tenant-schema"];
 
   try {
-    // Always get a client for the common schema
-    req.commonDbClient = await db.getSchemaClient(commonSchema);
+    // Always get a pool for the common schema
+    req.commonDbPool = await db.getSchemaPool(commonSchema);
 
-    // Get tenant-specific schema client if provided
+    // Get tenant-specific schema pool if provided
     if (tenantSchema) {
-      req.tenantDbClient = await db.getSchemaClient(tenantSchema);
+      req.tenantDbPool = await db.getSchemaPool(tenantSchema);
     } else {
       // Fallback: use common as tenant
-      req.tenantDbClient = req.commonDbClient;
+      req.tenantDbPool = req.commonDbPool;
     }
 
     res.on("finish", () => {
-      req.tenantDbClient?.release?.();
-      if (req.commonDbClient && req.commonDbClient !== req.tenantDbClient) {
-        req.commonDbClient.release();
+      req.tenantDbPool?.release?.();
+      if (req.commonDbPool && req.commonDbPool !== req.tenantDbPool) {
+        req.commonDbPool.release();
       }
     });
 

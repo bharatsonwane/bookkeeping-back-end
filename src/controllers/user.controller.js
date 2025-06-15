@@ -4,7 +4,7 @@ import { createTwtToken, validatePassword } from "../helper/authHelper.js";
 
 export const postUserLogin = async (req, res, next) => {
   try {
-    const commonDbClient = req.commonDbClient
+    const commonDbPool = req.commonDbPool
 
     const { email, password } = req.body;
     const user = await User.findUserByEmail(email);

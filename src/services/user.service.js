@@ -8,9 +8,9 @@ export default class User {
     this.tenantId = reqObj.tenantId
   }
 
-  async createUser(commonDbClient) {
+  async createUser(commonDbPool) {
     const hashedPassword = await getHashPassword(this.password);
-    const tenantResult = await commonDbClient.query(
+    const tenantResult = await commonDbPool.query(
       `INSERT INTO users (email, password, "tenantId") 
         VALUES ($1, $2, $3) RETURNING id`,
         [this.email, hashedPassword, this.tenantId]

@@ -4,19 +4,19 @@ import { createTwtToken, validatePassword } from "../helper/authHelper.js";
 import User from "../services/user.service.js";
 
 export const postTenantSignup = async (req, res, next) => {
-  const commonDbClient = req.commonDbClient;
-  const tenantDbClient = req.tenantDbClient;
+  const commonDbPool = req.commonDbPool;
+  const tenantDbPool = req.tenantDbPool;
   try {
     const body = req.body;
 
-    await commonDbClient.query("BEGIN");
+    await commonDbPool.query("BEGIN");
 
     const tenantService = new Tenant({
       name: body.name,
       domain: body.domain,
     });
 
-    const tenantId = await tenantService.createTenant(commonDbClient);
+    const tenantId = await tenantService.createTenant(commonDbPool);
 
     const userService = new User({
       email: body.email,
@@ -24,12 +24,12 @@ export const postTenantSignup = async (req, res, next) => {
       tenantId: tenantId,
     });
 
-    await userService.createUser(commonDbClient);
+    await userService.createUser(commonDbPool);
 
-    await commonDbClient.query("COMMIT");
+    await commonDbPool.query("COMMIT");
     res.status(200).send({ token: "jwtToken", userData: "tokenData" });
   } catch (error) {
-    await commonDbClient.query("ROLLBACK");
+    await commonDbPool.query("ROLLBACK");
     res.error(error);
   }
 };

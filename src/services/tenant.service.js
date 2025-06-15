@@ -7,8 +7,8 @@ export default class Tenant {
     this.domain = reqObj.domain;
   }
 
-  async createTenant(commonDbClient) {
-    const tenantResult = await commonDbClient.query(
+  async createTenant(commonDbPool) {
+    const tenantResult = await commonDbPool.query(
         `INSERT INTO tenants (name, domain) VALUES ($1, $2) RETURNING id`,
         [this.name, this.domain]
       );
