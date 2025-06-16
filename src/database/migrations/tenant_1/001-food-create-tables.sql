@@ -28,27 +28,27 @@ CREATE TABLE IF NOT EXISTS food (
 -- 2. NUTRITION TABLE
 CREATE TABLE IF NOT EXISTS nutrition (
   id SERIAL PRIMARY KEY,
-  "foodId" INTEGER REFERENCES food(id) ON DELETE CASCADE,
   calories NUMERIC,
   protein NUMERIC,
   carbohydrates NUMERIC,
   fats NUMERIC,
-  vitamins TEXT
+  vitamins TEXT,
+  "foodId" INTEGER REFERENCES food(id) ON DELETE CASCADE
 );
 
 -- 3. INGREDIENTS TABLE
 CREATE TABLE IF NOT EXISTS ingredients (
   id SERIAL PRIMARY KEY,
-  "foodId" INTEGER REFERENCES food(id) ON DELETE CASCADE,
   name TEXT,
   quantity TEXT,
-  unit TEXT
+  unit TEXT,
+  "foodId" INTEGER REFERENCES food(id) ON DELETE CASCADE
 );
 
 -- 4. INSTRUCTIONS TABLE
 CREATE TABLE IF NOT EXISTS instructions (
   id SERIAL PRIMARY KEY,
-  "foodId" INTEGER REFERENCES food(id) ON DELETE CASCADE,
   "stepNumber" INTEGER,
-  "stepDescription" TEXT
+  "stepDescription" TEXT,
+  "foodId" INTEGER REFERENCES food(id) ON DELETE CASCADE
 );
