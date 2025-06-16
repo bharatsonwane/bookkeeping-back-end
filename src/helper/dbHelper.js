@@ -8,19 +8,18 @@ export const compileSQLTemplate = (templateQuery, dataValue) => {
       .split(".")
       .reduce((acc, key) => acc?.[key], obj);
 
-  // 1. Handle bulk inserts first
+  // 1. Handle bulk inserts
   const resolveBulkInsert = (query) =>
     query.replace(/\$<bulk:(\w+)\(([^)]+)\)>/g, (_, arrayKey, content) => {
       const arrayData = dataValue[arrayKey];
       if (!Array.isArray(arrayData))
         throw new Error(`${arrayKey} must be an array`);
-
       const parts = content.split(",").map((s) => s.trim());
 
       const rows = arrayData.map((item) => {
         const rowParts = parts.map((part) => {
           if (part.startsWith("$[")) {
-            const path = part.slice(2, -1); // strip $[ and ]
+            const path = part.slice(2, -1);
             const value = getValueByPath(item, path);
             if (value === undefined)
               throw new Error(`Missing ${path} in ${arrayKey}`);
@@ -28,17 +27,46 @@ export const compileSQLTemplate = (templateQuery, dataValue) => {
             paramValues.push(value);
             return placeholder;
           } else {
-            return part; // literal (e.g. 'new_food_id')
+            return part;
           }
         });
-
         return `(${rowParts.join(", ")})`;
       });
 
       return rows.join(",\n");
     });
 
-  // 2. Handle basic $[key] placeholders
+  // 2. Handle multi-update blocks
+  const resolveMultiUpdate = (query) =>
+    query.replace(
+      /\$<multiUpdate:(\w+)\(([^)]+)\)>/g,
+      (_, arrayKey, updateTemplate) => {
+        const arrayData = dataValue[arrayKey];
+        if (!Array.isArray(arrayData))
+          throw new Error(`${arrayKey} must be an array`);
+
+        const updateStatements = arrayData.map((item) => {
+          let stmt = updateTemplate.replace(
+            /\$\[([\w.\[\]]+)\]/g,
+            (_, path) => {
+              const value = getValueByPath(item, path);
+              if (value === undefined)
+                throw new Error(
+                  `Missing value for key: ${path} in ${arrayKey}`
+                );
+              const placeholder = `$${paramIndex++}`;
+              paramValues.push(value);
+              return placeholder;
+            }
+          );
+          return stmt.trim().endsWith(";") ? stmt : stmt + ";";
+        });
+
+        return updateStatements.join("\n");
+      }
+    );
+
+  // 3. Handle simple placeholders
   const resolveSimplePlaceholders = (query) =>
     query.replace(/\$\[([\w.\[\]]+)\]/g, (_, path) => {
       const value = getValueByPath(dataValue, path);
@@ -50,7 +78,7 @@ export const compileSQLTemplate = (templateQuery, dataValue) => {
     });
 
   const parsedQuery = resolveSimplePlaceholders(
-    resolveBulkInsert(templateQuery)
+    resolveMultiUpdate(resolveBulkInsert(templateQuery))
   );
 
   return { query: parsedQuery, paramValues };
@@ -78,8 +106,7 @@ console.log(paramValues);
 // [123, 456.78, 12.5, 34.9]
 */
 
-/** 
- * @example2
+/**@example2
 const template2 = `
 INSERT INTO ingredients ("foodId", name, quantity, unit) VALUES
 $<bulk:ingredients('new_food_id', $[name], $[quantity], $[unit])>;
@@ -93,5 +120,26 @@ const data2 = {
   ],
 };
 
-const { query, paramValues } = compileSQLTemplate(template2, data2);
+const { query: query2, paramValues: paramValues2 } = compileSQLTemplate(template2, data2);
+console.log("query2", query2);
+console.log("paramValues2", paramValues2);
 */
+
+/**@example3
+const template3 = `$<multiUpdate:ingredients(UPDATE food SET name = $[name] WHERE id = $[id] )>`;
+
+const data3 = {
+  food: { id: 1, name: "Updated Food" },
+  ingredients: [
+    { id: 101, name: "Salt", quantity: "1", unit: "tsp" },
+    { id: 102, name: "Butter", quantity: "2", unit: "tbsp" },
+  ],
+};
+
+const { query: query3, paramValues: paramValues3 } = compileSQLTemplate(
+  template3,
+  data3
+);
+console.log("query3", query3);
+console.log("paramValues3", paramValues3);
+ */
