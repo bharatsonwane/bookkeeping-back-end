@@ -3,6 +3,16 @@ import {
   validateUserService,
 } from "../services/auth.service.js";
 
+/* 
+First time register
+-- Tenant+user
+
+Second
+TEnant already created
+- user onboard + tenantid required
+
+*/
+
 export const signupController = async (req, res) => {
   try {
     const { username, password, tenant_id, tenant } = req.body;

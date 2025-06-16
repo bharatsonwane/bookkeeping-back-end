@@ -20,7 +20,6 @@ import {
 } from "../controllers/user.controller.js";
 import RouteRegistrar from "../middleware/RouteRegistrar.js";
 import { authRoleMiddleware } from "../middleware/authRoleMiddleware.js";
-import { dbClientMiddleware } from "../middleware/dbClientMiddleware.js";
 
 const router = express.Router();
 

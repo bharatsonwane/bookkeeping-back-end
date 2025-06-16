@@ -8,13 +8,6 @@ const dashboardSchema = {
   children: [],
 };
 
-const dashboardQuerySchema = {
-  name: "dashboardSchema",
-  label: "Dashboard Schema",
-  type: "querySchema",
-  version: "1.0",
-};
-
 const productListSchema = {
   name: "dashboardSchema",
   label: "Dashboard Schema",
@@ -23,24 +16,7 @@ const productListSchema = {
   children: [],
 };
 
-const productListQuerySchema = {
-  name: "dashboardSchema",
-  label: "Dashboard Schema",
-  type: "querySchema",
-  version: "1.0",
-  queries: [
-    {
-      type: "get",
-      query: () => `SELECT name, "description", "price" from products;`,
-    },
-
-    {
-      type: "post",
-      query: () => `SELECT name, "description", "price" from products;`,
-    },
-  ],
-};
-
+// `SELECT name, "description", "price" from products;`
 const productDetail = {
   name: "productDetailSchema",
   label: "Product Detail Schema",
@@ -49,34 +25,23 @@ const productDetail = {
   children: [],
 };
 
-const productDetailQuerySchema = {
-  name: "productDetailSchema",
-  label: "Product Detail Schema",
-  type: "querySchema",
-  version: "1.0",
-};
-
 const sidebarItem = [
   {
     name: "dashboard",
     label: "Dashboard",
-
-    uiSchema: dashboardSchema,
-    querySchema: dashboardQuerySchema,
+    schema: dashboardSchema,
   },
   {
     name: "productList",
     label: "Product List",
 
-    uiSchema: productListSchema,
-    querySchema: productListQuerySchema,
+    schema: productListSchema,
   },
   {
     name: "productDetail",
     label: "Product Detail",
 
-    uiSchema: productDetail,
-    querySchema: productDetailQuerySchema,
+    schema: productDetail,
   },
 ];
 export const up = async (client) => {
@@ -90,15 +55,10 @@ export const up = async (client) => {
 
   for (const schema of sidebarItem) {
     const result = await client.query(
-      `INSERT INTO schema_config (name, label, "uiSchema", "sqlQuery")
-       VALUES ($1, $2, $3, $4)
+      `INSERT INTO schema_config (name, label, "schema")
+       VALUES ($1, $2, $3)
        RETURNING id`,
-      [
-        schema.name,
-        schema.label,
-        JSON.stringify(schema.uiSchema),
-        JSON.stringify(schema.querySchema),
-      ]
+      [schema.name, schema.label, JSON.stringify(schema.schema)]
     );
 
     const insertedId = result.rows[0].id;
@@ -111,14 +71,13 @@ export const up = async (client) => {
   }
 
   await client.query(
-    `INSERT INTO schema_config (name, label, "uiSchema", "sqlQuery")
-     VALUES ($1, $2, $3, $4)
+    `INSERT INTO schema_config (name, label, "schema")
+     VALUES ($1, $2, $3)
      RETURNING id`,
     [
       sideBarSchemaForDB.name,
       sideBarSchemaForDB.label,
       JSON.stringify(sideBarSchemaForDB),
-      JSON.stringify({}),
     ]
   );
 };

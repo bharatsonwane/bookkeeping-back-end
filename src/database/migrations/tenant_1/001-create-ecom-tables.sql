@@ -2,8 +2,7 @@ CREATE TABLE schema_config (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     label TEXT,
-    "uiSchema" JSONB,
-    "sqlQuery" JSONB
+    "schema" JSONB
 );
 
 CREATE TABLE IF NOT EXISTS users (

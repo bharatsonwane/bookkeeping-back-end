@@ -4,10 +4,10 @@ import { createTwtToken, validatePassword } from "../helper/authHelper.js";
 
 export const postUserLogin = async (req, res, next) => {
   try {
-    const commonDbPool = req.commonDbPool
+    const commonDbPool = req.commonDbPool;
 
     const { email, password } = req.body;
-    const user = await User.findUserByEmail(email);
+    const user = await User.findUserByEmail(commonDbPool, email);
     if (!user) {
       throw new HttpError("Invalid email or password", 401);
     }
@@ -82,7 +82,10 @@ export const updateUserPassword = async (req, res, next) => {
   try {
     const userId = req.params.id;
     const updateData = req.body;
-    const updatedUser = await User.updateUserPassword(userId, updateData.password);
+    const updatedUser = await User.updateUserPassword(
+      userId,
+      updateData.password
+    );
     res.status(200).send(updatedUser);
   } catch (error) {
     res.error(error);
