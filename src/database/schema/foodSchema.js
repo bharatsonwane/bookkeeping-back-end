@@ -79,7 +79,7 @@ export default {
               type: "textarea",
               dataMappingName: "food.description",
               readOnly: false,
-              isMultilingual: true,
+              isMultilingual: false,
             },
           ],
         },

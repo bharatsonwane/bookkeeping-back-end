@@ -1,0 +1,51 @@
+API
+-------
+/user/sign-up
+/user/login
+/schema/sidebar
+/schema/:id
+
+
+
+
+
+const productListQuerySchema = {
+  name: "dashboardSchema",
+  label: "Dashboard Schema",
+  type: "querySchema",
+  version: "1.0",
+  queries: [
+    {
+      type: "get",
+      query: `SELECT name, "description", "price" FROM products;`,
+    },
+
+    {
+      type: "create",
+      query: `SELECT name, "description", "price" FROM products WHERE id=$[id];`,
+    },
+  ],
+};
+
+
+const productList = {
+    name: "productList",
+    label: "Product List",
+    type: "schema",
+    subtype: "",
+    version: "1.0",
+    children: [
+        {
+            name: "name",
+            label: "Name",
+        },
+         {
+            name: "description",
+            label: "Description",
+        },
+         {
+            name: "price",
+            label: "Price",
+        }
+    ]
+}

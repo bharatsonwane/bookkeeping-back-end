@@ -8,24 +8,24 @@ export const seed = async () => {
   const tenantList = [
     {
       tenant: {
-        name: "Acme Corp",
-        domain: "acme.example.com",
+        name: "Techno Food",
+        domain: "Food",
       },
       users: [
         {
-          email: "john@gmail.com",
+          email: "bharat@gmail.com",
           password: "Password@123",
         },
       ],
     },
     {
       tenant: {
-        name: "Globex Inc",
-        domain: "globex.example.org",
+        name: "Globes Inc",
+        domain: "Textile",
       },
       users: [
         {
-          email: "smith@gmail.com",
+          email: "tushar@gmail.com",
           password: "Password@123",
         },
       ],
