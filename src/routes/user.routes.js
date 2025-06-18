@@ -11,12 +11,12 @@ import {
 } from "../schemas/user.schema.js";
 import { idValidation } from "../schemas/common.schema.js";
 import {
-  getUserById,
-  getUsersList,
+  // getUserById,
+  // getUsersList,
   postUserLogin,
   postUserSignup,
-  updateUserPassword,
-  updateUser,
+  // updateUserPassword,
+  // updateUser,
 } from "../controllers/user.controller.js";
 import RouteRegistrar from "../middleware/RouteRegistrar.js";
 import { authRoleMiddleware } from "../middleware/authRoleMiddleware.js";

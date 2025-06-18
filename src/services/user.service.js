@@ -21,10 +21,10 @@ export default class User {
 
   static async findUserByEmail(commonDbPool, email) {
     const userResult = await commonDbPool.query(
-      `SELECT * from users WHERE email=$1`,
+      `SELECT id, email, password, "tenantId" from users WHERE email=$1`,
       [email]
     );
 
-    return userResult?.rows[0]?.id;
+    return userResult?.rows[0];
   }
 }

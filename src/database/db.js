@@ -63,7 +63,7 @@ class Database {
   async getSchemaPool(schemaName) {
     const pool = await this.getDbPool().connect();
     try {
-      await pool.query(`SET search_path TO ${schemaName}, public`);
+      await pool.query(`SET search_path TO ${schemaName}`);
       return pool;
     } catch (error) {
       pool.release();
