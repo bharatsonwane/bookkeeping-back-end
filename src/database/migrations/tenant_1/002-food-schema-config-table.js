@@ -501,6 +501,11 @@ export const up = async (client) => {
         label: "User List",
       },
       {
+        type: "addButton",
+        label: "Add User's",
+        schemaId: "foodDetailSchema",
+      },
+      {
         type: "table",
         queryName: "getFoodList",
         onRowClick: {

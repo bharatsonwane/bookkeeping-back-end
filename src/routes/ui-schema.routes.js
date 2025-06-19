@@ -2,7 +2,6 @@ import express from "express";
 
 import RouteRegistrar from "../middleware/RouteRegistrar.js";
 // import { authRoleMiddleware } from "../middleware/authRoleMiddleware.js";
-// import { TenantCreateSchema } from "../schemas/tenant.schema.js";
 import {
   SidebarSchemaResponse,
   GetSchemaByIdRequest,
