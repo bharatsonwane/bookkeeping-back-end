@@ -92,15 +92,14 @@ export const up = async (client) => {
     children: [
       {
         type: "heading",
-        label: "User List",
+        label: "Food List",
       },
       {
-        type: "addButton",
-        label: "Add User's",
+        type: "button",
+        label: "Add Food",
         schemaName: "foodDetailSchema",
         onClick: {
-          type: "navigate",
-          navigationPath: "/app/home/foodDetailSchema",
+          navigationPath: "/app/home/create/:schemaName",
           schemaName: "foodDetailSchema",
         },
       },
