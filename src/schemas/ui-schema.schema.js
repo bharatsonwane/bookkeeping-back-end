@@ -33,8 +33,8 @@ export const SidebarSchemaResponse = ApiResponseSchema.extend({
 });
 
 /**@description Request schema for getting schema by ID */
-export const GetSchemaByIdRequest = z.object({
-  id: z.string().min(1, "Schema ID is required"),
+export const GetSchemaByNameRequest = z.object({
+  name: z.string().min(3, "Schema name is required"),
 });
 
 /**@description Schema data structure */
@@ -43,10 +43,17 @@ export const SchemaData = z.object({
   name: z.string(),
   label: z.string(),
   schema: z.any(), // The schema can be any JSON object structure
+  isArchived: z.boolean(),
+  isDeleted: z.boolean(),
+  createdBy: z.number(),
+  updatedBy: z.number(),
+  archivedBy: z.number(),
+  deletedBy: z.number(),
+  createdAt: z.date(),
 });
 
 /**@description Get schema by ID response schema */
-export const GetSchemaByIdResponse = ApiResponseSchema.extend({
+export const GetSchemaByNameResponse = ApiResponseSchema.extend({
   data: SchemaData,
 });
 
@@ -69,7 +76,7 @@ export const GetDataByQueryResponse = ApiResponseSchema.extend({
 });
 
 docRegistry.register("SidebarSchemaResponse", SidebarSchemaResponse);
-docRegistry.register("GetSchemaByIdRequest", GetSchemaByIdRequest);
-docRegistry.register("GetSchemaByIdResponse", GetSchemaByIdResponse);
+docRegistry.register("GetSchemaByNameRequest", GetSchemaByNameRequest);
+docRegistry.register("GetSchemaByNameResponse", GetSchemaByNameResponse);
 docRegistry.register("GetDataByQueryRequest", GetDataByQueryRequest);
 docRegistry.register("GetDataByQueryResponse", GetDataByQueryResponse);

@@ -75,6 +75,7 @@ export const runMigrationForSchema = async (schemaName = "common") => {
   }
 
   // 🛠 Run migrations using Umzug
+  // @ts-ignore
   const umzug = new Umzug({
     migrations: pendingMigrations.map(({ name, fullPath }) => ({
       name,

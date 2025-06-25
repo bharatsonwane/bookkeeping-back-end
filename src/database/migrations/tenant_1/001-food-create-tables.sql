@@ -1,8 +1,18 @@
 CREATE TABLE IF NOT EXISTS schema_config (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL , 
+    name VARCHAR(255) UNIQUE NOT NULL,
     label TEXT,
-    "schema" JSONB
+    "schema" JSONB,
+    "isArchived" BOOLEAN DEFAULT FALSE,
+    "isDeleted" BOOLEAN DEFAULT FALSE,
+    "createdBy" INT DEFAULT NULL,
+    "updatedBy" INT DEFAULT NULL,
+    "archivedBy" INT DEFAULT NULL,
+    "deletedBy" INT DEFAULT NULL,
+    "createdAt" TIMESTAMP DEFAULT NOW(),
+    "updatedAt" TIMESTAMP DEFAULT NOW(),
+    "archivedAt" TIMESTAMP DEFAULT NOW(),
+    "deletedAt" TIMESTAMP DEFAULT NOW()
 );
 
 CREATE TABLE IF NOT EXISTS users (

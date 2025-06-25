@@ -4,15 +4,16 @@ import RouteRegistrar from "../middleware/RouteRegistrar.js";
 // import { authRoleMiddleware } from "../middleware/authRoleMiddleware.js";
 import {
   SidebarSchemaResponse,
-  GetSchemaByIdRequest,
-  GetSchemaByIdResponse,
+  GetSchemaByNameRequest,
+  GetSchemaByNameResponse,
   GetDataByQueryRequest,
   GetDataByQueryResponse,
 } from "../schemas/ui-schema.schema.js";
 import {
   getSidebarSchema,
-  postGetSchemaById,
+  postGetSchemaByName,
   postGetDataByQuery,
+  postGetSchemaConfigByName,
 } from "../controllers/ui-config.controller.js";
 
 const router = express.Router();
@@ -28,11 +29,18 @@ registrar.get("/get-sidebar-schema", {
   controller: getSidebarSchema,
 });
 
-/**@description Get schema by ID */
-registrar.post("/get-schema-by-id", {
-  requestSchema: { bodySchema: GetSchemaByIdRequest },
-  responseSchemas: [{ statusCode: 200, schema: GetSchemaByIdResponse }],
-  controller: postGetSchemaById,
+/**@description Get schema-config by name */
+registrar.post("/get-schema-config-by-name", {
+  requestSchema: { bodySchema: GetSchemaByNameRequest },
+  responseSchemas: [{ statusCode: 200, schema: GetSchemaByNameResponse }],
+  controller: postGetSchemaConfigByName,
+});
+
+/**@description Get schema by name */
+registrar.post("/get-schema-by-name", {
+  requestSchema: { bodySchema: GetSchemaByNameRequest },
+  responseSchemas: [{ statusCode: 200, schema: GetSchemaByNameResponse }],
+  controller: postGetSchemaByName,
 });
 
 /**@description Get data by custom SQL query */

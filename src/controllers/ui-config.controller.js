@@ -4,9 +4,7 @@ import UiConfig from "../services/ui-config.service.js";
 export const getSidebarSchema = async (req, res, next) => {
   const tenantDbPool = req.tenantDbPool;
   try {
-    const uiConfigService = new UiConfig();
-
-    const result = await uiConfigService.getSidebarSchema(tenantDbPool);
+    const result = await UiConfig.getSidebarSchema(tenantDbPool);
     res.status(200).send({
       success: true,
       msg: "Logged In!",
@@ -17,15 +15,35 @@ export const getSidebarSchema = async (req, res, next) => {
   }
 };
 
-export const postGetSchemaById = async (req, res, next) => {
+
+export const postGetSchemaConfigByName = async (req, res, next) => {
   const tenantDbPool = req.tenantDbPool;
   try {
-    const uiConfigService = new UiConfig();
     const body = req.body;
 
-    const result = await uiConfigService.getSchemaById(
+    const result = await UiConfig.getSchemaByName(
       tenantDbPool,
-      req.body.id
+      req.body.name
+    );
+
+    res.status(200).send({
+      success: true,
+      msg: "Schema Fetched Successfully!",
+      data: result,
+    });
+  } catch (error) {
+    res.error(error);
+  }
+};
+
+export const postGetSchemaByName = async (req, res, next) => {
+  const tenantDbPool = req.tenantDbPool;
+  try {
+    const body = req.body;
+
+    const result = await UiConfig.getSchemaByName(
+      tenantDbPool,
+      req.body.name
     );
 
     res.status(200).send({
@@ -41,10 +59,9 @@ export const postGetSchemaById = async (req, res, next) => {
 export const postGetDataByQuery = async (req, res, next) => {
   const tenantDbPool = req.tenantDbPool;
   try {
-    const uiConfigService = new UiConfig();
     const body = req.body;
 
-    const result = await uiConfigService.getDataByQuery(
+    const result = await UiConfig.getDataByQuery(
       tenantDbPool,
       body.query
     );

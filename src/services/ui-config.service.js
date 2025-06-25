@@ -8,7 +8,7 @@ export default class UiConfig {
    * @param {Object} tenantDbPool - Database pool for tenant-specific schema
    * @returns {Promise<Object>} Sidebar schema configuration
    */
-  async getSidebarSchema(tenantDbPool) {
+  static async getSidebarSchema(tenantDbPool) {
     try {
       // Query the schema_config table to get the sidebar schema
       const result = await tenantDbPool.query(
@@ -33,7 +33,7 @@ export default class UiConfig {
    * @param {Object} tenantDbPool - Database pool for tenant-specific schema
    * @returns {Promise<Array>} List of available schemas
    */
-  async getAllSchemas(tenantDbPool) {
+  static async getAllSchemas(tenantDbPool) {
     try {
       const result = await tenantDbPool.query(
         `SELECT id, name, label, "schema" FROM schema_config ORDER BY name`
@@ -52,39 +52,45 @@ export default class UiConfig {
   }
 
   /**
-   * Get a specific schema by id
+   * Get a specific schema by name
    * @param {Object} tenantDbPool - Database pool for tenant-specific schema
-   * @param {string} schemaId - Name of the schema to retrieve
+   * @param {string} schemaName - Name of the schema to retrieve
    * @returns {Promise<Object>} Schema configuration
    */
-  async getSchemaById(tenantDbPool, schemaId) {
-    try {
-      const result = await tenantDbPool.query(
-        `SELECT id, name, label, "schema" FROM schema_config WHERE id = $1`,
-        [schemaId]
-      );
+  static async getSchemaConfigByName(tenantDbPool, schemaName) {
+    const result = await tenantDbPool.query(
+      `SELECT id, name, label, "schema" FROM schema_config WHERE name = $1`,
+      [schemaName]
+    );
 
-      if (result.rows.length === 0) {
-        throw new Error(`Schema '${schemaId}' not found`);
-      }
-
-      return {
-        id: result.rows[0].id,
-        name: result.rows[0].name,
-        label: result.rows[0].label,
-        schema: result.rows[0].schema,
-      };
-    } catch (error) {
-      console.error(`Error fetching schema '${schemaId}':`, error);
-      throw new Error(
-        `Failed to retrieve schema '${schemaId}': ${error.message}`
-      );
+    if (result.rows.length === 0) {
+      throw new Error(`Schema '${schemaName}' not found`);
     }
+
+    return result.rows[0];
   }
 
-  async getDataByQuery(tenantDbPool, query) {
-    const result = await tenantDbPool.query(query);
+  /**
+   * Get a specific schema by name
+   * @param {Object} tenantDbPool - Database pool for tenant-specific schema
+   * @param {string} schemaName - Name of the schema to retrieve
+   * @returns {Promise<Object>} Schema configuration
+   */
+  static async getSchemaByName(tenantDbPool, schemaName) {
+    const result = await tenantDbPool.query(
+      `SELECT "schema" FROM schema_config WHERE name = $1`,
+      [schemaName]
+    );
 
-    return result;
+    if (result.rows.length === 0) {
+      throw new Error(`Schema '${schemaName}' not found`);
+    }
+
+    return result.rows[0].schema || {};
+  }
+
+  static async getDataByQuery(tenantDbPool, query) {
+    const result = await tenantDbPool.query(query);
+    return result.rows;
   }
 }

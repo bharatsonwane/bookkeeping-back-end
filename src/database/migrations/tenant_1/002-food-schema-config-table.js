@@ -1,6 +1,157 @@
 // src/database/migrations/common/002-schema-config-table.js
 
 export const up = async (client) => {
+  const sideBarSchema = {
+    name: "sidebarSchema",
+    label: "Sidebar Schema",
+    type: "schema",
+    version: "1.0",
+    children: [
+      {
+        name: "dashboard",
+        label: "Dashboard",
+        icon: "",
+        schemaName: "dashboardSchema",
+      },
+      {
+        name: "userList",
+        label: "User List",
+        icon: "",
+        schemaName: "userListSchema",
+      },
+      {
+        name: "foodList",
+        label: "Food List",
+        icon: "",
+        schemaName: "foodListSchema",
+      },
+    ],
+  };
+
+  const dashboardSchema = {
+    name: "dashboardSchema",
+
+    label: "Dashboard Schema",
+    type: "schema",
+    version: "1.0",
+    children: [],
+  };
+
+  const userListSchema = {
+    name: "userListSchema",
+    label: "User List Schema",
+    type: "schema",
+    version: "1.0",
+    children: [
+      {
+        type: "heading",
+        label: "User List",
+      },
+      //here we are going to add section, subsection
+      {
+        type: "table",
+        queryName: "getUserList",
+        children: [
+          {
+            type: "tableColum",
+            name: "id",
+            label: "Id",
+          },
+          {
+            type: "tableColum",
+            name: "firstName",
+            label: "First Name",
+          },
+          {
+            type: "tableColum",
+            name: "lastName",
+            label: "Last Name",
+          },
+          {
+            type: "tableColum",
+            name: "cuisine",
+            label: "Cuisine",
+          },
+        ],
+      },
+    ],
+    sqlQueryList: [
+      {
+        queryName: "getUserList",
+        query: `SELECT * FROM users;`,
+      },
+    ],
+  };
+
+  const foodListSchema = {
+    name: "foodListSchema",
+    label: "Food List Schema",
+    type: "schema",
+    version: "1.0",
+    defaultQueryName: "getFoodList",
+    children: [
+      {
+        type: "heading",
+        label: "User List",
+      },
+      {
+        type: "addButton",
+        label: "Add User's",
+        schemaName: "foodDetailSchema",
+      },
+      {
+        type: "table",
+        queryName: "getFoodList",
+        onRowClick: {
+          navigationPath: "/.../.../..../..",
+          schemaName: "foodDetailSchema",
+        },
+        children: [
+          {
+            type: "tableColum",
+            name: "id",
+            label: "Id",
+          },
+          {
+            type: "tableColum",
+            name: "name",
+            label: "Food Name",
+          },
+          {
+            type: "tableColum",
+            name: "category",
+            label: "Food category",
+          },
+          {
+            type: "tableColum",
+            name: "cuisine",
+            label: "Cuisine",
+          },
+          {
+            type: "tableColum",
+            name: "calories",
+            label: "Calories",
+          },
+        ],
+      },
+    ],
+    sqlQueryList: [
+      {
+        queryName: "getFoodList",
+        query: `
+          SELECT
+            f.id,
+            f.name,
+            f.category,
+            f.cuisine,
+            n.calories
+          FROM food f
+          LEFT JOIN nutrition n ON n."foodId" = f.id;
+          `,
+      },
+    ],
+  };
+
   const foodDetailSchema = {
     name: "foodDetailSchema",
     label: "Food Detail Schema",
@@ -422,198 +573,22 @@ export const up = async (client) => {
     ],
   };
 
-  const foodDetailSchemaResult = await client.query(
-    `INSERT INTO schema_config (name, label, "schema")
-     VALUES ($1, $2, $3)
-     RETURNING id`,
-    [
-      foodDetailSchema.name,
-      foodDetailSchema.label,
-      JSON.stringify(foodDetailSchema),
-    ]
-  );
-
-  const foodDetailSchemaId = foodDetailSchemaResult.rows[0].id;
-
-  const dashboardSchema = {
-    name: "dashboardSchema",
-
-    label: "Dashboard Schema",
-    type: "schema",
-    version: "1.0",
-    children: [],
-  };
-
-  const userListSchema = {
-    name: "userListSchema",
-    label: "User List Schema",
-    type: "schema",
-    version: "1.0",
-    children: [
-      {
-        type: "heading",
-        label: "User List",
-      },
-      //here we are going to add section, subsection
-      {
-        type: "table",
-        queryName: "getUserList",
-        children: [
-          {
-            type: "tableColum",
-            name: "id",
-            label: "Id",
-          },
-          {
-            type: "tableColum",
-            name: "firstName",
-            label: "First Name",
-          },
-          {
-            type: "tableColum",
-            name: "lastName",
-            label: "Last Name",
-          },
-          {
-            type: "tableColum",
-            name: "cuisine",
-            label: "Cuisine",
-          },
-        ],
-      },
-    ],
-    sqlQueryList: [
-      {
-        queryName: "getUserList",
-        query: `SELECT * FROM users;`,
-      },
-    ],
-  };
-
-  const foodListSchema = {
-    name: "foodListSchema",
-    label: "Food List Schema",
-    type: "schema",
-    version: "1.0",
-    children: [
-      {
-        type: "heading",
-        label: "User List",
-      },
-      {
-        type: "addButton",
-        label: "Add User's",
-        schemaId: "foodDetailSchema",
-      },
-      {
-        type: "table",
-        queryName: "getFoodList",
-        onRowClick: {
-          navigationPath: "/.../.../..../..",
-          schemaId: foodDetailSchemaId,
-        },
-        children: [
-          {
-            type: "tableColum",
-            name: "id",
-            label: "Id",
-          },
-          {
-            type: "tableColum",
-            name: "name",
-            label: "Food Name",
-          },
-          {
-            type: "tableColum",
-            name: "category",
-            label: "Food category",
-          },
-          {
-            type: "tableColum",
-            name: "cuisine",
-            label: "Cuisine",
-          },
-          {
-            type: "tableColum",
-            name: "calories",
-            label: "Calories",
-          },
-        ],
-      },
-    ],
-    sqlQueryList: [
-      {
-        queryName: "getFoodList",
-        query: `
-          SELECT
-            f.id,
-            f.name,
-            f.category,
-            f.cuisine,
-            n.calories
-          FROM food f
-          LEFT JOIN nutrition n ON n."foodId" = f.id;
-          `,
-      },
-    ],
-  };
-
-  const sidebarItems = [
-    {
-      name: "dashboard",
-      label: "Dashboard",
-      icon: "",
-      schema: dashboardSchema,
-    },
-    {
-      name: "userList",
-      label: "User List",
-      icon: "",
-      schema: userListSchema,
-    },
-    {
-      name: "foodList",
-      label: "Food List",
-      icon: "",
-      schema: foodListSchema,
-    },
+  const schemaList = [
+    sideBarSchema,
+    dashboardSchema,
+    userListSchema,
+    foodListSchema,
+    foodDetailSchema,
   ];
 
-  const sideBarSchemaForDB = {
-    name: "sidebarSchema",
-    label: "Sidebar Schema",
-    type: "schema",
-    version: "1.0",
-    children: [],
-  };
-
-  for (const schema of sidebarItems) {
-    const result = await client.query(
+  for (const schema of schemaList) {
+    await client.query(
       `INSERT INTO schema_config (name, label, "schema")
        VALUES ($1, $2, $3)
-       RETURNING id`,
-      [schema.name, schema.label, JSON.stringify(schema.schema)]
+       `,
+      [schema.name, schema.label, JSON.stringify(schema)]
     );
-
-    const insertedId = result.rows[0].id;
-
-    name: schema.name,
-      sideBarSchemaForDB.children.push({
-        label: schema.label,
-        schemaId: insertedId,
-      });
   }
-
-  await client.query(
-    `INSERT INTO schema_config (name, label, "schema")
-     VALUES ($1, $2, $3)
-     RETURNING id`,
-    [
-      sideBarSchemaForDB.name,
-      sideBarSchemaForDB.label,
-      JSON.stringify(sideBarSchemaForDB),
-    ]
-  );
 };
 
 export const down = async (client) => {};
