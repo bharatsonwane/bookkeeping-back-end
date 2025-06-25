@@ -7,7 +7,8 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "nodemon --experimental-specifier-resolution=node index.js",
-    "seed": "node --experimental-specifier-resolution=node src/database/seed.js",
+    "seed": "node --experimental-specifier-resolution=node src/database/seed/seed.js",
+    "seed-food": "node --experimental-specifier-resolution=node src/database/seed/seedFoodData.js",
     "migrate": "node --experimental-specifier-resolution=node src/database/migrate.js"
   },
   "author": "",

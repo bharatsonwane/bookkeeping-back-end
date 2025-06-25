@@ -1,6 +1,6 @@
-import { getHashPassword } from "../helper/authHelper.js";
-import logger from "../helper/logger.js";
-import db from "./db.js";
+import { getHashPassword } from "../../helper/authHelper.js";
+import logger from "../../helper/logger.js";
+import db from "../db.js";
 
 export const seed = async () => {
   const client = await db.getDbClient();

@@ -98,6 +98,11 @@ export const up = async (client) => {
         type: "addButton",
         label: "Add User's",
         schemaName: "foodDetailSchema",
+        onClick: {
+          type: "navigate",
+          navigationPath: "/app/home/foodDetailSchema",
+          schemaName: "foodDetailSchema",
+        },
       },
       {
         type: "table",
