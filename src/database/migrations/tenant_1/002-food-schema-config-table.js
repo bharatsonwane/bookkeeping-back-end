@@ -192,7 +192,7 @@ export const up = async (client) => {
                   {
                     label: "Food Name",
                     type: "text",
-                    dataMappingName: "food.name",
+                    dataMappingName: "name",
                     validationType: "string",
                     validations: [
                       {
@@ -212,7 +212,7 @@ export const up = async (client) => {
                   {
                     label: "Food ID",
                     type: "text",
-                    dataMappingName: "food.id",
+                    dataMappingName: "id",
                     validationType: "string",
                     validations: [
                       {
@@ -237,7 +237,7 @@ export const up = async (client) => {
                       { label: "Non-Vegetarian", value: "Non-Vegetarian" },
                       { label: "Vegan", value: "Vegan" },
                     ],
-                    dataMappingName: "food.category",
+                    dataMappingName: "category",
                     readOnly: false,
                     isMultilingual: false,
                     isShowInTable: true,
@@ -245,7 +245,7 @@ export const up = async (client) => {
                   {
                     label: "Cuisine",
                     type: "text",
-                    dataMappingName: "food.cuisine",
+                    dataMappingName: "cuisine",
                     validationType: "string",
                     validations: [
                       {
@@ -265,14 +265,14 @@ export const up = async (client) => {
                   {
                     label: "Preparation Time",
                     type: "number",
-                    dataMappingName: "food.preparationTime",
+                    dataMappingName: "preparationTime",
                     readOnly: false,
                     isMultilingual: false,
                   },
                   {
                     label: "Description",
                     type: "textarea",
-                    dataMappingName: "food.description",
+                    dataMappingName: "description",
                     readOnly: false,
                     isMultilingual: true,
                   },
@@ -450,11 +450,11 @@ export const up = async (client) => {
               "preparationTime",
               description
             ) VALUES (
-              $[food.name],
-              $[food.category],
-              $[food.cuisine],
-              $[food.preparationTime],
-              $[food.description]
+              $[name],
+              $[category],
+              $[cuisine],
+              $[preparationTime],
+              $[description]
             )
             RETURNING id INTO new_food_id;
   
@@ -480,14 +480,13 @@ export const up = async (client) => {
           END $$;
         `,
         sampleDataValue: {
-          food: {
-            name: "Paneer Butter Masala",
-            category: "Vegetarian",
-            cuisine: "Indian",
-            preparationTime: 40,
-            description:
-              "A rich and creamy curry made with paneer in a tomato-butter base.",
-          },
+          name: "Paneer Butter Masala",
+          category: "Vegetarian",
+          cuisine: "Indian",
+          preparationTime: 40,
+          description:
+            "A rich and creamy curry made with paneer in a tomato-butter base.",
+
           nutrition: {
             calories: 450,
             protein: 12,
@@ -529,12 +528,12 @@ export const up = async (client) => {
           BEGIN
             -- Update food table
             UPDATE food SET
-              name = $[food.name],
-              category = $[food.category],
-              cuisine = $[food.cuisine],
-              "preparationTime" = $[food.preparationTime],
-              description = $[food.description]
-            WHERE id = $[food.id];
+              name = $[name],
+              category = $[category],
+              cuisine = $[cuisine],
+              "preparationTime" = $[preparationTime],
+              description = $[description]
+            WHERE id = $[id];
   
             -- Update nutrition table
             UPDATE nutrition SET
@@ -543,7 +542,7 @@ export const up = async (client) => {
               carbohydrates = $[nutrition.carbohydrates],
               fats = $[nutrition.fats],
               vitamins = $[nutrition.vitamins]
-            WHERE "foodId" = $[food.id];
+            WHERE "foodId" = $[id];
   
             -- Update ingredients
             $<multiUpdate:ingredients(
@@ -564,14 +563,13 @@ export const up = async (client) => {
           END $$;
         `,
         sampleDataValue: {
-          food: {
-            id: 1,
-            name: "Updated Paneer Butter Masala",
-            category: "Vegetarian",
-            cuisine: "Indian",
-            preparationTime: 45,
-            description: "A rich tomato-based curry with paneer and butter.",
-          },
+          id: 1,
+          name: "Updated Paneer Butter Masala",
+          category: "Vegetarian",
+          cuisine: "Indian",
+          preparationTime: 45,
+          description: "A rich tomato-based curry with paneer and butter.",
+
           nutrition: {
             calories: 480,
             protein: 14,
