@@ -323,30 +323,32 @@ export const up = async (client) => {
           },
           {
             label: "Ingredients",
-            type: "tab",
+            type: "tab", // it may be section, subsection, tab
             children: [
               {
                 label: "Ingredient List",
                 type: "section",
+                isArray: true,
+                dataMappingName: "ingredients",
                 children: [
                   {
                     label: "Ingredient Name",
                     type: "text",
-                    dataMappingName: "ingredients.name",
+                    dataMappingName: "name",
                     readOnly: false,
                     isMultilingual: false,
                   },
                   {
                     label: "Quantity",
                     type: "text",
-                    dataMappingName: "ingredients.quantity",
+                    dataMappingName: "quantity",
                     readOnly: false,
                     isMultilingual: false,
                   },
                   {
                     label: "Unit",
                     type: "text",
-                    dataMappingName: "ingredients.unit",
+                    dataMappingName: "unit",
                     readOnly: false,
                     isMultilingual: false,
                   },
@@ -357,22 +359,24 @@ export const up = async (client) => {
           {
             label: "Cooking Instructions",
             type: "tab",
+            isArray: true,
+            dataMappingName: "instructions",
             children: [
               {
                 label: "Steps",
                 type: "section",
                 children: [
                   {
-                    label: "Step Description",
-                    type: "textarea",
-                    dataMappingName: "instructions.steps",
+                    label: "Step Number",
+                    type: "number",
+                    dataMappingName: "stepNumber",
                     readOnly: false,
                     isMultilingual: false,
                   },
                   {
-                    label: "Step Number",
-                    type: "number",
-                    dataMappingName: "instructions.stepNumber",
+                    label: "Step Description",
+                    type: "textarea",
+                    dataMappingName: "stepDescription",
                     readOnly: false,
                     isMultilingual: false,
                   },
@@ -387,50 +391,50 @@ export const up = async (client) => {
       {
         queryName: "getFoodDetailById",
         query: `
-          SELECT 
-            f.id,
-            f.name,
-            f.category,
-            f.cuisine,
-            f."preparationTime",
-            f.description,
-              
-            jsonb_build_object(
-              'calories', n.calories,
-              'protein', n.protein,
-              'carbohydrates', n.carbohydrates,
-              'fats', n.fats,
-              'vitamins', n.vitamins
-            ) AS nutrition,
-              
-            (
-              SELECT jsonb_agg(
-                jsonb_build_object(
-                  'name', i.name,
-                  'quantity', i.quantity,
-                  'unit', i.unit
-                )
+        SELECT 
+          f.id,
+          f.name,
+          f.category,
+          f.cuisine,
+          f."preparationTime",
+          f.description,
+            
+          jsonb_build_object(
+            'calories', n.calories,
+            'protein', n.protein,
+            'carbohydrates', n.carbohydrates,
+            'fats', n.fats,
+            'vitamins', n.vitamins
+          ) AS nutrition,
+            
+          (
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'name', i.name,
+                'quantity', i.quantity,
+                'unit', i.unit
               )
-              FROM ingredients i
-              WHERE i."foodId" = f.id
-            ) AS ingredients,
-              
-            (
-              SELECT jsonb_agg(
-                jsonb_build_object(
-                  'stepNumber', ins."stepNumber",
-                  'stepDescription', ins."stepDescription"
-                )
-                ORDER BY ins."stepNumber"
+            )
+            FROM ingredients i
+            WHERE i."foodId" = f.id
+          ) AS ingredients,
+            
+          (
+            SELECT jsonb_agg(
+              jsonb_build_object(
+                'stepNumber', ins."stepNumber",
+                'stepDescription', ins."stepDescription"
               )
-              FROM instructions ins
-              WHERE ins."foodId" = f.id
-            ) AS instructions
-              
-          FROM food f
-          LEFT JOIN nutrition n ON n."foodId" = f.id
-          WHERE f.id = $[id];
-        `,
+              ORDER BY ins."stepNumber"
+            )
+            FROM instructions ins
+            WHERE ins."foodId" = f.id
+          ) AS instructions
+            
+        FROM food f
+        LEFT JOIN nutrition n ON n."foodId" = f.id
+        WHERE f.id = $[id];
+      `,
         sampleDataValue: {
           id: 16,
         },
@@ -438,47 +442,47 @@ export const up = async (client) => {
       {
         queryName: "saveFoodDetail",
         query: `
-          DO $$
-          DECLARE
-            new_food_id INTEGER;
-          BEGIN
-            -- Insert into food and store id
-            INSERT INTO food (
-              name,
-              category,
-              cuisine,
-              "preparationTime",
-              description
-            ) VALUES (
-              $[name],
-              $[category],
-              $[cuisine],
-              $[preparationTime],
-              $[description]
-            )
-            RETURNING id INTO new_food_id;
-  
-            -- Insert into nutrition
-            INSERT INTO nutrition (
-              "foodId", calories, protein, carbohydrates, fats, vitamins
-            ) VALUES (
-              new_food_id,
-              $[nutrition.calories],
-              $[nutrition.protein],
-              $[nutrition.carbohydrates],
-              $[nutrition.fats],
-              $[nutrition.vitamins]
-            );
-  
-            -- Insert ingredients
-            INSERT INTO ingredients ("foodId", name, quantity, unit) VALUES
-            $<bulk:ingredients(new_food_id, $[name], $[quantity], $[unit])>;
-  
-            -- Insert instructions
-            INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") VALUES
-            $<bulk:instructions(new_food_id, $[stepNumber], $[stepDescription])>;
-          END $$;
-        `,
+        DO $$
+        DECLARE
+          new_food_id INTEGER;
+        BEGIN
+          -- Insert into food and store id
+          INSERT INTO food (
+            name,
+            category,
+            cuisine,
+            "preparationTime",
+            description
+          ) VALUES (
+            $[name],
+            $[category],
+            $[cuisine],
+            $[preparationTime],
+            $[description]
+          )
+          RETURNING id INTO new_food_id;
+
+          -- Insert into nutrition
+          INSERT INTO nutrition (
+            "foodId", calories, protein, carbohydrates, fats, vitamins
+          ) VALUES (
+            new_food_id,
+            $[nutrition.calories],
+            $[nutrition.protein],
+            $[nutrition.carbohydrates],
+            $[nutrition.fats],
+            $[nutrition.vitamins]
+          );
+
+          -- Insert ingredients
+          INSERT INTO ingredients ("foodId", name, quantity, unit) VALUES
+          $<bulk:ingredients(new_food_id, $[name], $[quantity], $[unit])>;
+
+          -- Insert instructions
+          INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") VALUES
+          $<bulk:instructions(new_food_id, $[stepNumber], $[stepDescription])>;
+        END $$;
+      `,
         sampleDataValue: {
           name: "Paneer Butter Masala",
           category: "Vegetarian",
@@ -524,44 +528,44 @@ export const up = async (client) => {
       {
         queryName: "updateFoodDetail",
         query: `
-          DO $$
-          BEGIN
-            -- Update food table
-            UPDATE food SET
+        DO $$
+        BEGIN
+          -- Update food table
+          UPDATE food SET
+            name = $[name],
+            category = $[category],
+            cuisine = $[cuisine],
+            "preparationTime" = $[preparationTime],
+            description = $[description]
+          WHERE id = $[id];
+
+          -- Update nutrition table
+          UPDATE nutrition SET
+            calories = $[nutrition.calories],
+            protein = $[nutrition.protein],
+            carbohydrates = $[nutrition.carbohydrates],
+            fats = $[nutrition.fats],
+            vitamins = $[nutrition.vitamins]
+          WHERE "foodId" = $[id];
+
+          -- Update ingredients
+          $<multiUpdate:ingredients(
+            UPDATE ingredients SET
               name = $[name],
-              category = $[category],
-              cuisine = $[cuisine],
-              "preparationTime" = $[preparationTime],
-              description = $[description]
-            WHERE id = $[id];
-  
-            -- Update nutrition table
-            UPDATE nutrition SET
-              calories = $[nutrition.calories],
-              protein = $[nutrition.protein],
-              carbohydrates = $[nutrition.carbohydrates],
-              fats = $[nutrition.fats],
-              vitamins = $[nutrition.vitamins]
-            WHERE "foodId" = $[id];
-  
-            -- Update ingredients
-            $<multiUpdate:ingredients(
-              UPDATE ingredients SET
-                name = $[name],
-                quantity = $[quantity],
-                unit = $[unit]
-              WHERE id = $[id]
-            )>
-  
-            -- Update instructions
-            $<multiUpdate:instructions(
-              UPDATE instructions SET
-                "stepNumber" = $[stepNumber],
-                "stepDescription" = $[stepDescription]
-              WHERE id = $[id]
-            )>
-          END $$;
-        `,
+              quantity = $[quantity],
+              unit = $[unit]
+            WHERE id = $[id]
+          )>
+
+          -- Update instructions
+          $<multiUpdate:instructions(
+            UPDATE instructions SET
+              "stepNumber" = $[stepNumber],
+              "stepDescription" = $[stepDescription]
+            WHERE id = $[id]
+          )>
+        END $$;
+      `,
         sampleDataValue: {
           id: 1,
           name: "Updated Paneer Butter Masala",
