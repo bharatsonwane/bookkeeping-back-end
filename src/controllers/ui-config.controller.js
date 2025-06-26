@@ -63,7 +63,8 @@ export const postGetDataByQuery = async (req, res, next) => {
 
     const result = await UiConfig.getDataByQuery(
       tenantDbPool,
-      body.query
+      body.query,
+      body.dataValue
     );
 
     res.status(200).send({

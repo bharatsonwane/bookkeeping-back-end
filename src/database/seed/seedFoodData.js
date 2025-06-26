@@ -88,7 +88,6 @@ const insertFoodData = async () => {
     await client.query("SET search_path TO tenant_1");
 
     for (const food of foodData) {
-      debugger;
       // Insert into food table
       const foodResult = await client.query(
         `INSERT INTO food (name, category, cuisine, "preparationTime", description) VALUES ($1, $2, $3, $4, $5) RETURNING id`,

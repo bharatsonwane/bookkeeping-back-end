@@ -107,7 +107,7 @@ export const up = async (client) => {
         type: "table",
         queryName: "getFoodList",
         onRowClick: {
-          navigationPath: "/.../.../..../..",
+          navigationPath: "/app/home/:actionType/:schemaName/:id", // actionType: view, create, update
           schemaName: "foodDetailSchema",
         },
         children: [
@@ -161,6 +161,7 @@ export const up = async (client) => {
     label: "Food Detail Schema",
     type: "schema",
     version: "1.0",
+    defaultQueryName: "getFoodDetailById",
     children: [
       {
         type: "section",

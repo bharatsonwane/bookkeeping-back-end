@@ -77,11 +77,11 @@ export const compileSQLTemplate = (templateQuery, dataValue) => {
       return placeholder;
     });
 
-  const parsedQuery = resolveSimplePlaceholders(
+  const compiledQuery = resolveSimplePlaceholders(
     resolveMultiUpdate(resolveBulkInsert(templateQuery))
   );
 
-  return { query: parsedQuery, paramValues };
+  return { compiledQuery, paramValues };
 };
 
 /** 
@@ -97,8 +97,8 @@ const data = {
   items: [{ price: 12.5 }, { price: 34.9 }],
 };
 
-const { query, paramValues } = compileSQLTemplate(template, data);
-console.log(query);
+const { compiledQuery, paramValues } = compileSQLTemplate(template, data);
+console.log(compiledQuery);
 // INSERT INTO orders (user_id, total, item1_price, item2_price)
 // VALUES ($1, $2, $3, $4);
 
@@ -120,7 +120,7 @@ const data2 = {
   ],
 };
 
-const { query: query2, paramValues: paramValues2 } = compileSQLTemplate(template2, data2);
+const { compiledQuery: query2, paramValues: paramValues2 } = compileSQLTemplate(template2, data2);
 console.log("query2", query2);
 console.log("paramValues2", paramValues2);
 */
@@ -136,7 +136,7 @@ const data3 = {
   ],
 };
 
-const { query: query3, paramValues: paramValues3 } = compileSQLTemplate(
+const { compiledQuery: query3, paramValues: paramValues3 } = compileSQLTemplate(
   template3,
   data3
 );

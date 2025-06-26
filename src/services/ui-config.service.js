@@ -1,4 +1,5 @@
 import { getHashPassword } from "../helper/authHelper.js";
+import { compileSQLTemplate } from "../helper/dbHelper.js";
 
 export default class UiConfig {
   constructor(reqObj) {}
@@ -89,8 +90,9 @@ export default class UiConfig {
     return result.rows[0].schema || {};
   }
 
-  static async getDataByQuery(tenantDbPool, query) {
-    const result = await tenantDbPool.query(query);
+  static async getDataByQuery(tenantDbPool, query, dataValue) {
+    const { compiledQuery, paramValues } = compileSQLTemplate(query, dataValue);
+    const result = await tenantDbPool.query(compiledQuery, paramValues);
     return result.rows;
   }
 }
