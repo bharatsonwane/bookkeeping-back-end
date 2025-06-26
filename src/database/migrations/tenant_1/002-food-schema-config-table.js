@@ -631,12 +631,146 @@ export const up = async (client) => {
     ],
   };
 
+  const userDetailSchema = {
+    name: "userDetailSchema",
+    label: "User Detail Schema",
+    type: "schema",
+    version: "1.0",
+    defaultQueryName: "getUserDetailById",
+    children: [
+      {
+        type: "section",
+        label: "",
+        children: [
+          {
+            type: "headingWithButton",
+            label: "Save",
+            onClick: () => {
+              console.log("Save");
+            },
+          },
+        ],
+      },
+      {
+        type: "section",
+        label: "",
+        children: [
+          {
+            queryName: "getUserDetailById",
+            label: "User Details",
+            type: "parentTab",
+            children: [
+              {
+                label: "Basic Information",
+                type: "tab",
+                children: [
+                  {
+                    label: "User ID",
+                    type: "text",
+                    dataMappingName: "id",
+                    validationType: "string",
+                    readOnly: true,
+                    isShowInTable: true,
+                  },
+                  {
+                    label: "Email",
+                    type: "text",
+                    dataMappingName: "email",
+                    validationType: "string",
+                    validations: [
+                      { type: "email", params: ["Invalid email address"] },
+                    ],
+                    readOnly: false,
+                    isShowInTable: true,
+                  },
+                  {
+                    label: "First Name",
+                    type: "text",
+                    dataMappingName: "firstName",
+                    validationType: "string",
+                    validations: [{ type: "min", params: [1, "Required"] }],
+                    readOnly: false,
+                    isShowInTable: true,
+                  },
+                  {
+                    label: "Last Name",
+                    type: "text",
+                    dataMappingName: "lastName",
+                    validationType: "string",
+                    readOnly: false,
+                    isShowInTable: true,
+                  },
+                  {
+                    label: "Phone",
+                    type: "text",
+                    dataMappingName: "phone",
+                    validationType: "string",
+                    readOnly: false,
+                  },
+                  {
+                    label: "Address",
+                    type: "textarea",
+                    dataMappingName: "address",
+                    readOnly: false,
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    sqlQueryList: [
+      {
+        queryName: "getUserDetailById",
+        query: `SELECT id, email, "firstName", "lastName", phone, address FROM users WHERE id = $[id];`,
+        sampleDataValue: { id: 1 },
+      },
+      {
+        queryName: "saveUserDetail",
+        query: `
+          INSERT INTO users (email, "firstName", "lastName", phone, address)
+          VALUES ($[email], $[firstName], $[lastName], $[phone], $[address])
+          RETURNING id;
+        `,
+        sampleDataValue: {
+          email: "user@example.com",
+          firstName: "John",
+          lastName: "Doe",
+          phone: "1234567890",
+          address: "123 Main St",
+        },
+      },
+      {
+        queryName: "updateUserDetail",
+        query: `
+          UPDATE users SET
+            email = $[email],
+            "firstName" = $[firstName],
+            "lastName" = $[lastName],
+            phone = $[phone],
+            address = $[address]
+          WHERE id = $[id];
+        `,
+        sampleDataValue: {
+          id: 1,
+          email: "user@example.com",
+          firstName: "John",
+          lastName: "Doe",
+          phone: "1234567890",
+          address: "123 Main St",
+        },
+      },
+    ],
+  };
+
   const schemaList = [
     sideBarSchema,
     dashboardSchema,
     userListSchema,
     foodListSchema,
     foodDetailSchema,
+    userDetailSchema,
   ];
 
   for (const schema of schemaList) {
