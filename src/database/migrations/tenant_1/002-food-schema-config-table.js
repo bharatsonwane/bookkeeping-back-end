@@ -42,20 +42,38 @@ export const up = async (client) => {
     label: "User List Schema",
     type: "schema",
     version: "1.0",
+    defaultQueryName: "getUserList",
     children: [
       {
         type: "heading",
         label: "User List",
       },
-      //here we are going to add section, subsection
+      {
+        type: "button",
+        label: "Add User",
+        schemaName: "userDetailSchema",
+        onClick: {
+          navigationPath: "/app/home/create/:schemaName",
+          schemaName: "userDetailSchema",
+        },
+      },
       {
         type: "table",
         queryName: "getUserList",
+        onRowClick: {
+          navigationPath: "/app/home/:actionType/:schemaName/:id",
+          schemaName: "userDetailSchema",
+        },
         children: [
           {
             type: "tableColum",
             name: "id",
             label: "Id",
+          },
+          {
+            type: "tableColum",
+            name: "email",
+            label: "Email",
           },
           {
             type: "tableColum",
@@ -69,8 +87,13 @@ export const up = async (client) => {
           },
           {
             type: "tableColum",
-            name: "cuisine",
-            label: "Cuisine",
+            name: "phone",
+            label: "Phone",
+          },
+          {
+            type: "tableColum",
+            name: "address",
+            label: "Address",
           },
         ],
       },
@@ -78,7 +101,7 @@ export const up = async (client) => {
     sqlQueryList: [
       {
         queryName: "getUserList",
-        query: `SELECT * FROM users;`,
+        query: `SELECT id, email, "firstName", "lastName", phone, address FROM users;`,
       },
     ],
   };
