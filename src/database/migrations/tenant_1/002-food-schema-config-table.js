@@ -193,8 +193,11 @@ export const up = async (client) => {
           {
             type: "headingWithButton",
             label: "Save",
-            onClick: () => {
-              console.log("Save");
+            onCreate: {
+              queryName: "saveFoodDetail",
+            },
+            onUpdate: {
+              queryName: "updateFoodDetail",
             },
           },
         ],
@@ -521,7 +524,7 @@ export const up = async (client) => {
           preparationTime: 40,
           description:
             "A rich and creamy curry made with paneer in a tomato-butter base.",
-
+  
           nutrition: {
             calories: 450,
             protein: 12,
@@ -604,7 +607,7 @@ export const up = async (client) => {
           cuisine: "Indian",
           preparationTime: 45,
           description: "A rich tomato-based curry with paneer and butter.",
-
+  
           nutrition: {
             calories: 480,
             protein: 14,
@@ -638,6 +641,7 @@ export const up = async (client) => {
       },
     ],
   };
+  
 
   const userDetailSchema = {
     name: "userDetailSchema",
