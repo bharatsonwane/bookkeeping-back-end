@@ -61,7 +61,7 @@ export const up = async (client) => {
         type: "table",
         queryName: "getUserList",
         onRowClick: {
-          navigationPath: "/app/home/:actionType/:schemaName/:id",
+          navigationPath: "/app/home/:uiActionType/:schemaName/:id",
           schemaName: "userDetailSchema",
         },
         children: [
@@ -130,7 +130,7 @@ export const up = async (client) => {
         type: "table",
         queryName: "getFoodList",
         onRowClick: {
-          navigationPath: "/app/home/:actionType/:schemaName/:id", // actionType: view, create, update
+          navigationPath: "/app/home/:uiActionType/:schemaName/:id", // uiActionType: view, create, update
           schemaName: "foodDetailSchema",
         },
         children: [
