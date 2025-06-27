@@ -351,29 +351,33 @@ export const up = async (client) => {
               {
                 label: "Ingredient List",
                 type: "section",
-                isArray: true,
-                dataMappingName: "ingredients",
                 children: [
                   {
-                    label: "Ingredient Name",
-                    type: "text",
-                    dataMappingName: "name",
-                    readOnly: false,
-                    isMultilingual: false,
-                  },
-                  {
-                    label: "Quantity",
-                    type: "text",
-                    dataMappingName: "quantity",
-                    readOnly: false,
-                    isMultilingual: false,
-                  },
-                  {
-                    label: "Unit",
-                    type: "text",
-                    dataMappingName: "unit",
-                    readOnly: false,
-                    isMultilingual: false,
+                    type: "arrayItem",
+                    dataMappingName: "ingredients",
+                    children: [
+                      {
+                        label: "Ingredient Name",
+                        type: "text",
+                        childDataMappingName: "name",
+                        readOnly: false,
+                        isMultilingual: false,
+                      },
+                      {
+                        label: "Quantity",
+                        type: "text",
+                        childDataMappingName: "quantity",
+                        readOnly: false,
+                        isMultilingual: false,
+                      },
+                      {
+                        label: "Unit",
+                        type: "text",
+                        childDataMappingName: "unit",
+                        readOnly: false,
+                        isMultilingual: false,
+                      },
+                    ],
                   },
                 ],
               },
@@ -382,26 +386,30 @@ export const up = async (client) => {
           {
             label: "Cooking Instructions",
             type: "tab",
-            isArray: true,
-            dataMappingName: "instructions",
             children: [
               {
                 label: "Steps",
                 type: "section",
                 children: [
                   {
-                    label: "Step Number",
-                    type: "number",
-                    dataMappingName: "stepNumber",
-                    readOnly: false,
-                    isMultilingual: false,
-                  },
-                  {
-                    label: "Step Description",
-                    type: "textarea",
-                    dataMappingName: "stepDescription",
-                    readOnly: false,
-                    isMultilingual: false,
+                    type: "arrayItem",
+                    dataMappingName: "instructions",
+                    children: [
+                      {
+                        label: "Step Number",
+                        type: "number",
+                        childDataMappingName: "stepNumber",
+                        readOnly: false,
+                        isMultilingual: false,
+                      },
+                      {
+                        label: "Step Description",
+                        type: "textarea",
+                        childDataMappingName: "stepDescription",
+                        readOnly: false,
+                        isMultilingual: false,
+                      },
+                    ],
                   },
                 ],
               },
@@ -484,7 +492,7 @@ export const up = async (client) => {
             $[description]
           )
           RETURNING id INTO new_food_id;
-
+  
           -- Insert into nutrition
           INSERT INTO nutrition (
             "foodId", calories, protein, carbohydrates, fats, vitamins
@@ -496,11 +504,11 @@ export const up = async (client) => {
             $[nutrition.fats],
             $[nutrition.vitamins]
           );
-
+  
           -- Insert ingredients
           INSERT INTO ingredients ("foodId", name, quantity, unit) VALUES
           $<bulk:ingredients(new_food_id, $[name], $[quantity], $[unit])>;
-
+  
           -- Insert instructions
           INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") VALUES
           $<bulk:instructions(new_food_id, $[stepNumber], $[stepDescription])>;
@@ -561,7 +569,7 @@ export const up = async (client) => {
             "preparationTime" = $[preparationTime],
             description = $[description]
           WHERE id = $[id];
-
+  
           -- Update nutrition table
           UPDATE nutrition SET
             calories = $[nutrition.calories],
@@ -570,7 +578,7 @@ export const up = async (client) => {
             fats = $[nutrition.fats],
             vitamins = $[nutrition.vitamins]
           WHERE "foodId" = $[id];
-
+  
           -- Update ingredients
           $<multiUpdate:ingredients(
             UPDATE ingredients SET
@@ -579,7 +587,7 @@ export const up = async (client) => {
               unit = $[unit]
             WHERE id = $[id]
           )>
-
+  
           -- Update instructions
           $<multiUpdate:instructions(
             UPDATE instructions SET
