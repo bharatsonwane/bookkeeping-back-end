@@ -9,6 +9,7 @@
     "start": "nodemon --experimental-specifier-resolution=node index.js",
     "seed": "node --experimental-specifier-resolution=node src/database/seed/seed.js",
     "seed-food": "node --experimental-specifier-resolution=node src/database/seed/seedFoodData.js",
+    "seed-car": "node --experimental-specifier-resolution=node src/database/seed/seedCarData.js",
     "migrate": "node --experimental-specifier-resolution=node src/database/migrate.js"
   },
   "author": "",
