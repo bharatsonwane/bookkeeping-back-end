@@ -1,0 +1,48 @@
+CREATE TABLE IF NOT EXISTS schema_config (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL,
+    label TEXT,
+    "schema" JSONB,
+    "isArchived" BOOLEAN DEFAULT FALSE,
+    "isDeleted" BOOLEAN DEFAULT FALSE,
+    "createdBy" INT DEFAULT NULL,
+    "updatedBy" INT DEFAULT NULL,
+    "archivedBy" INT DEFAULT NULL,
+    "deletedBy" INT DEFAULT NULL,
+    "createdAt" TIMESTAMP DEFAULT NOW(),
+    "updatedAt" TIMESTAMP DEFAULT NOW(),
+    "archivedAt" TIMESTAMP DEFAULT NOW(),
+    "deletedAt" TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cars (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL CHECK (char_length(name) >= 3),
+  brand VARCHAR(50) NOT NULL,
+  model VARCHAR(50) NOT NULL,
+  year INTEGER CHECK (year >= 1886),
+  price NUMERIC NOT NULL,
+  description TEXT
+);
+
+CREATE TABLE IF NOT EXISTS features (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  value VARCHAR(100),
+  carId INTEGER REFERENCES cars(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS owners (
+  id SERIAL PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  phone VARCHAR(20),
+  address TEXT
+);
+
+CREATE TABLE IF NOT EXISTS sales (
+  id SERIAL PRIMARY KEY,
+  carId INTEGER REFERENCES cars(id) ON DELETE CASCADE,
+  ownerId INTEGER REFERENCES owners(id) ON DELETE SET NULL,
+  saleDate TIMESTAMP DEFAULT NOW(),
+  price NUMERIC NOT NULL
+); 

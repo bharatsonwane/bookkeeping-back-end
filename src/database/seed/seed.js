@@ -20,6 +20,18 @@ export const seed = async () => {
     },
     {
       tenant: {
+        name: "Honda Showroom",
+        domain: "Car",
+      },
+      users: [
+        {
+          email: "john@gmail.com",
+          password: "Password@123",
+        },
+      ],
+    },
+    {
+      tenant: {
         name: "Globes Inc",
         domain: "Textile",
       },
