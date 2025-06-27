@@ -1,6 +1,10 @@
 export const compileSQLTemplate = (templateQuery, dataValue) => {
-  const paramValues = [];
-  let paramIndex = 1;
+  const escapeLiteral = (val) => {
+    if (val === null || val === undefined) return 'NULL';
+    if (typeof val === 'number') return val;
+    if (typeof val === 'boolean') return val ? 'TRUE' : 'FALSE';
+    return `'${String(val).replace(/'/g, "''")}'`; // escape single quotes
+  };
 
   const getValueByPath = (obj, path) =>
     path
@@ -23,11 +27,9 @@ export const compileSQLTemplate = (templateQuery, dataValue) => {
             const value = getValueByPath(item, path);
             if (value === undefined)
               throw new Error(`Missing ${path} in ${arrayKey}`);
-            const placeholder = `$${paramIndex++}`;
-            paramValues.push(value);
-            return placeholder;
+            return escapeLiteral(value);
           } else {
-            return part;
+            return part; // literal or identifier
           }
         });
         return `(${rowParts.join(", ")})`;
@@ -54,9 +56,7 @@ export const compileSQLTemplate = (templateQuery, dataValue) => {
                 throw new Error(
                   `Missing value for key: ${path} in ${arrayKey}`
                 );
-              const placeholder = `$${paramIndex++}`;
-              paramValues.push(value);
-              return placeholder;
+              return escapeLiteral(value);
             }
           );
           return stmt.trim().endsWith(";") ? stmt : stmt + ";";
@@ -72,20 +72,18 @@ export const compileSQLTemplate = (templateQuery, dataValue) => {
       const value = getValueByPath(dataValue, path);
       if (value === undefined)
         throw new Error(`Missing value for key: ${path}`);
-      const placeholder = `$${paramIndex++}`;
-      paramValues.push(value);
-      return placeholder;
+      return escapeLiteral(value);
     });
 
   const compiledQuery = resolveSimplePlaceholders(
     resolveMultiUpdate(resolveBulkInsert(templateQuery))
   );
 
-  return { compiledQuery, paramValues };
+  return compiledQuery
 };
 
-/** 
- * @example1
+// /** 
+//  * @example1
 const template = `
   INSERT INTO orders (user_id, total, item1_price, item2_price)
   VALUES ($[user.id], $[total], $[items[0].price], $[items[1].price]);
@@ -97,14 +95,12 @@ const data = {
   items: [{ price: 12.5 }, { price: 34.9 }],
 };
 
-const { compiledQuery, paramValues } = compileSQLTemplate(template, data);
+const compiledQuery = compileSQLTemplate(template, data);
 console.log(compiledQuery);
 // INSERT INTO orders (user_id, total, item1_price, item2_price)
 // VALUES ($1, $2, $3, $4);
 
-console.log(paramValues);
-// [123, 456.78, 12.5, 34.9]
-*/
+// */
 
 /**@example2
 const template2 = `
@@ -120,9 +116,8 @@ const data2 = {
   ],
 };
 
-const { compiledQuery: query2, paramValues: paramValues2 } = compileSQLTemplate(template2, data2);
-console.log("query2", query2);
-console.log("paramValues2", paramValues2);
+const compiledQuery2 = compileSQLTemplate(template2, data2);
+console.log("compiledQuery2", compiledQuery2);
 */
 
 /**@example3
@@ -136,10 +131,9 @@ const data3 = {
   ],
 };
 
-const { compiledQuery: query3, paramValues: paramValues3 } = compileSQLTemplate(
+const compiledQuery3 = compileSQLTemplate(
   template3,
   data3
 );
-console.log("query3", query3);
-console.log("paramValues3", paramValues3);
+console.log("compiledQuery3", compiledQuery3);
  */

@@ -91,8 +91,9 @@ export default class UiConfig {
   }
 
   static async getDataByQuery(tenantDbPool, query, dataValue) {
-    const { compiledQuery, paramValues } = compileSQLTemplate(query, dataValue);
-    const result = await tenantDbPool.query(compiledQuery, paramValues);
+    const compiledQuery = compileSQLTemplate(query, dataValue);
+
+    const result = await tenantDbPool.query(compiledQuery);
     return result.rows;
   }
 }

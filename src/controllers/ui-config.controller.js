@@ -73,6 +73,7 @@ export const postGetDataByQuery = async (req, res, next) => {
       data: result,
     });
   } catch (error) {
+    console.error(error);
     res.error(error);
   }
 };
