@@ -82,8 +82,8 @@ export const compileSQLTemplate = (templateQuery, dataValue) => {
   return compiledQuery
 };
 
-// /** 
-//  * @example1
+/** 
+ * @example1
 const template = `
   INSERT INTO orders (user_id, total, item1_price, item2_price)
   VALUES ($[user.id], $[total], $[items[0].price], $[items[1].price]);
