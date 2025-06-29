@@ -221,14 +221,14 @@ export const up = async (client) => {
     sqlQueryList: [
       {
         queryName: "getCarDetailById",
-        query: `SELECT id, name, brand, model, year, price, description FROM cars WHERE id = $[id];`,
+        query: `SELECT id, name, brand, model, year, price, description FROM cars WHERE id = $[data.id];`,
         sampleDataValue: { id: 1 },
       },
       {
         queryName: "saveCarDetail",
         query: `
           INSERT INTO cars (name, brand, model, year, price, description)
-          VALUES ($[name], $[brand], $[model], $[year], $[price], $[description])
+          VALUES ($[data.name], $[data.brand], $[data.model], $[data.year], $[data.price], $[data.description])
           RETURNING id;
         `,
         sampleDataValue: {
@@ -244,13 +244,13 @@ export const up = async (client) => {
         queryName: "updateCarDetail",
         query: `
           UPDATE cars SET
-            name = $[name],
-            brand = $[brand],
-            model = $[model],
-            year = $[year],
-            price = $[price],
-            description = $[description]
-          WHERE id = $[id];
+            name = $[data.name],
+            brand = $[data.brand],
+            model = $[data.model],
+            year = $[data.year],
+            price = $[data.price],
+            description = $[data.description]
+          WHERE id = $[data.id];
         `,
         sampleDataValue: {
           id: 1,
@@ -368,14 +368,14 @@ export const up = async (client) => {
     sqlQueryList: [
       {
         queryName: "getOwnerDetailById",
-        query: `SELECT id, name, phone, address FROM owners WHERE id = $[id];`,
+        query: `SELECT id, name, phone, address FROM owners WHERE id = $[data.id];`,
         sampleDataValue: { id: 1 },
       },
       {
         queryName: "saveOwnerDetail",
         query: `
           INSERT INTO owners (name, phone, address)
-          VALUES ($[name], $[phone], $[address])
+          VALUES ($[data.name], $[data.phone], $[data.address])
           RETURNING id;
         `,
         sampleDataValue: {
@@ -388,10 +388,10 @@ export const up = async (client) => {
         queryName: "updateOwnerDetail",
         query: `
           UPDATE owners SET
-            name = $[name],
-            phone = $[phone],
-            address = $[address]
-          WHERE id = $[id];
+            name = $[data.name],
+            phone = $[data.phone],
+            address = $[data.address]
+          WHERE id = $[data.id];
         `,
         sampleDataValue: {
           id: 1,

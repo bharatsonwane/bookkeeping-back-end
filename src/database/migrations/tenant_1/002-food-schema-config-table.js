@@ -450,7 +450,7 @@ export const up = async (client) => {
             
         FROM food f
         LEFT JOIN nutrition n ON n."foodId" = f.id
-        WHERE f.id = $[id];
+        WHERE f.id = $[data.id];
       `,
         sampleDataValue: {
           id: 16,
@@ -471,11 +471,11 @@ export const up = async (client) => {
             "preparationTime",
             description
           ) VALUES (
-            $[name],
-            $[category],
-            $[cuisine],
-            $[preparationTime],
-            $[description]
+            $[data.name],
+            $[data.category],
+            $[data.cuisine],
+            $[data.preparationTime],
+            $[data.description]
           )
           RETURNING id INTO new_food_id;
   
@@ -484,20 +484,20 @@ export const up = async (client) => {
             "foodId", calories, protein, carbohydrates, fats, vitamins
           ) VALUES (
             new_food_id,
-            $[nutrition.calories],
-            $[nutrition.protein],
-            $[nutrition.carbohydrates],
-            $[nutrition.fats],
-            $[nutrition.vitamins]
+            $[data.nutrition.calories],
+            $[data.nutrition.protein],
+            $[data.nutrition.carbohydrates],
+            $[data.nutrition.fats],
+            $[data.nutrition.vitamins]
           );
   
           -- Insert ingredients
           INSERT INTO ingredients ("foodId", name, quantity, unit) VALUES
-          $<bulk:ingredients(new_food_id, $[name], $[quantity], $[unit])>;
+          $<bulk:$[data.ingredients](new_food_id, $[name], $[quantity], $[unit])>;
   
           -- Insert instructions
           INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") VALUES
-          $<bulk:instructions(new_food_id, $[stepNumber], $[stepDescription])>;
+          $<bulk:$[data.instructions](new_food_id, $[stepNumber], $[stepDescription])>;
         END $$;
       `,
         sampleDataValue: {
@@ -549,24 +549,24 @@ export const up = async (client) => {
         BEGIN
           -- Update food table
           UPDATE food SET
-            name = $[name],
-            category = $[category],
-            cuisine = $[cuisine],
-            "preparationTime" = $[preparationTime],
-            description = $[description]
-          WHERE id = $[id];
+            name = $[data.name],
+            category = $[data.category],
+            cuisine = $[data.cuisine],
+            "preparationTime" = $[data.preparationTime],
+            description = $[data.description]
+          WHERE id = $[data.id];
   
           -- Update nutrition table
           UPDATE nutrition SET
-            calories = $[nutrition.calories],
-            protein = $[nutrition.protein],
-            carbohydrates = $[nutrition.carbohydrates],
-            fats = $[nutrition.fats],
-            vitamins = $[nutrition.vitamins]
-          WHERE "foodId" = $[id];
+            calories = $[data.nutrition.calories],
+            protein = $[data.nutrition.protein],
+            carbohydrates = $[data.nutrition.carbohydrates],
+            fats = $[data.nutrition.fats],
+            vitamins = $[data.nutrition.vitamins]
+          WHERE "foodId" = $[data.id];
   
           -- Update ingredients
-          $<multiUpdate:ingredients(
+          $<multiUpdate:$[data.ingredients](
             UPDATE ingredients SET
               name = $[name],
               quantity = $[quantity],
@@ -575,7 +575,7 @@ export const up = async (client) => {
           )>
   
           -- Update instructions
-          $<multiUpdate:instructions(
+          $<multiUpdate:$[data.instructions](
             UPDATE instructions SET
               "stepNumber" = $[stepNumber],
               "stepDescription" = $[stepDescription]
@@ -622,6 +622,7 @@ export const up = async (client) => {
           ],
         },
       },
+      
     ],
   };
   
@@ -698,14 +699,14 @@ export const up = async (client) => {
     sqlQueryList: [
       {
         queryName: "getUserDetailById",
-        query: `SELECT id, email, "firstName", "lastName", phone, address FROM users WHERE id = $[id];`,
+        query: `SELECT id, email, "firstName", "lastName", phone, address FROM users WHERE id = $[data.id];`,
         sampleDataValue: { id: 1 },
       },
       {
         queryName: "saveUserDetail",
         query: `
           INSERT INTO users (email, "firstName", "lastName", phone, address)
-          VALUES ($[email], $[firstName], $[lastName], $[phone], $[address])
+          VALUES ($[data.email], $[data.firstName], $[data.lastName], $[data.phone], $[data.address])
           RETURNING id;
         `,
         sampleDataValue: {
@@ -720,12 +721,12 @@ export const up = async (client) => {
         queryName: "updateUserDetail",
         query: `
           UPDATE users SET
-            email = $[email],
-            "firstName" = $[firstName],
-            "lastName" = $[lastName],
-            phone = $[phone],
-            address = $[address]
-          WHERE id = $[id];
+            email = $[data.email],
+            "firstName" = $[data.firstName],
+            "lastName" = $[data.lastName],
+            phone = $[data.phone],
+            address = $[data.address]
+          WHERE id = $[data.id];
         `,
         sampleDataValue: {
           id: 1,
