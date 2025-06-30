@@ -10,12 +10,12 @@ const escapeLiteral = (val) => {
 const getValueByPath = (obj, path) => {
   // Check if path starts with 'data.' and remove it
   let actualPath = path;
-  if (path.startsWith('data.')) {
+  if (path.startsWith("data.")) {
     actualPath = path.slice(5); // Remove 'data.' prefix
   } else {
     throw new Error(`Path must start with 'data.': ${path}`);
   }
-  
+
   return actualPath
     .replace(/\[(\w+)\]/g, ".$1")
     .split(".")
@@ -69,6 +69,141 @@ const resolveBulkInserts = (query, data) => {
   );
 };
 
+// Handle bulk upsert by specified keys with explicit logical operators:
+// $<bulkUpsertByKey:arrayKey,[field1 && field2 && field3](insertTemplate|updateTemplate)> - ALL fields must exist (AND logic)
+// $<bulkUpsertByKey:arrayKey,[field1 || field2 || field3](insertTemplate|updateTemplate)> - AT LEAST ONE field must exist (OR logic)
+// $<bulkUpsertByKey:arrayKey,[field1](insertTemplate|updateTemplate)> - Single field (treated as AND logic)
+const resolveBulkUpsertsByKey = (query, data) => {
+  return query.replace(
+    /\$<bulkUpsertByKey:([^(]+)\(([^|]+)\|([^)]+)\)>/g,
+    (_, arrayKeyAndPK, insertTemplate, updateTemplate) => {
+      // Parse arrayKey and primaryKeyFields with logical operators
+      // Look for pattern: arrayKey,[field1 && field2] or arrayKey,[field1 || field2]
+      const arrayMatch = arrayKeyAndPK.match(/^(.*?),\[([^\]]+)\]$/);
+      if (!arrayMatch) {
+        throw new Error(
+          `bulkUpsertByKey requires array syntax: [field1 && field2] or [field1 || field2]. Got: ${arrayKeyAndPK}`
+        );
+      }
+
+      const arrayKeyPart = arrayMatch[1].trim();
+      const fieldsExpression = arrayMatch[2].trim();
+
+      // Determine if it's AND or OR logic
+      let primaryKeyFields;
+      let requireAllKeys;
+
+      if (fieldsExpression.includes("&&")) {
+        // AND logic: all fields must exist
+        requireAllKeys = true;
+        primaryKeyFields = fieldsExpression.split("&&").map((s) => s.trim());
+      } else if (fieldsExpression.includes("||")) {
+        // OR logic: at least one field must exist
+        requireAllKeys = false;
+        primaryKeyFields = fieldsExpression.split("||").map((s) => s.trim());
+      } else {
+        // Single field: treat as AND logic (field must exist)
+        requireAllKeys = true;
+        primaryKeyFields = [fieldsExpression.trim()];
+      }
+
+      // Check if arrayKey contains a placeholder like $[path]
+      let resolvedArrayKey = arrayKeyPart;
+      if (resolvedArrayKey.startsWith("$[") && resolvedArrayKey.endsWith("]")) {
+        // Extract the path from $[path] format
+        resolvedArrayKey = resolvedArrayKey.slice(2, -1);
+      }
+
+      const arrayData = getValueByPath(data, resolvedArrayKey);
+      if (!Array.isArray(arrayData)) {
+        throw new Error(`${resolvedArrayKey} must be an array`);
+      }
+
+      const statements = [];
+
+      arrayData.forEach((item) => {
+        let shouldUpdate;
+
+        if (requireAllKeys) {
+          // ALL primary key fields must exist and be not null/undefined (AND logic)
+          shouldUpdate = primaryKeyFields.every((field) => {
+            const value = getValueByPathFromItem(item, field);
+            return value !== null && value !== undefined;
+          });
+        } else {
+          // AT LEAST ONE primary key field must exist and be not null/undefined (OR logic)
+          shouldUpdate = primaryKeyFields.some((field) => {
+            const value = getValueByPathFromItem(item, field);
+            return value !== null && value !== undefined;
+          });
+        }
+
+        // If conditions are met, do UPDATE; otherwise do INSERT
+        if (shouldUpdate) {
+          const stmt = updateTemplate.replace(
+            /\$\[([\w.\[\]]+)\]/g,
+            (_, path) => {
+              const value = getValueByPathFromItem(item, path);
+              // For UPDATE operations, allow missing values to become NULL
+              return escapeLiteral(value);
+            }
+          );
+          statements.push(stmt.trim().endsWith(";") ? stmt : stmt + ";");
+        } else {
+          // Do INSERT - allow missing values and use NULL
+          const stmt = insertTemplate.replace(
+            /\$\[([\w.\[\]]+)\]/g,
+            (_, path) => {
+              const value = getValueByPathFromItem(item, path);
+              // For INSERT operations, missing values become NULL
+              return escapeLiteral(value);
+            }
+          );
+          statements.push(stmt.trim().endsWith(";") ? stmt : stmt + ";");
+        }
+      });
+
+      return statements.join("\n");
+    }
+  );
+};
+
+// Handle bulk upsert placeholders: $<bulkUpsert:arrayKey(upsertTemplate)>
+const resolveBulkUpserts = (query, data) => {
+  return query.replace(
+    /\$<bulkUpsert:([^(]+)\(([\s\S]*?)\)>/g,
+    (_, arrayKey, upsertTemplate) => {
+      // Check if arrayKey contains a placeholder like $[path]
+      let resolvedArrayKey = arrayKey.trim();
+      if (resolvedArrayKey.startsWith("$[") && resolvedArrayKey.endsWith("]")) {
+        // Extract the path from $[path] format
+        resolvedArrayKey = resolvedArrayKey.slice(2, -1);
+      }
+
+      const arrayData = getValueByPath(data, resolvedArrayKey);
+      if (!Array.isArray(arrayData)) {
+        throw new Error(`${resolvedArrayKey} must be an array`);
+      }
+
+      const upsertStatements = arrayData.map((item) => {
+        const stmt = upsertTemplate.replace(
+          /\$\[([\w.\[\]]+)\]/g,
+          (_, path) => {
+            const value = getValueByPathFromItem(item, path);
+            if (value === undefined) {
+              throw new Error(`Missing value for key: ${path} in ${arrayKey}`);
+            }
+            return escapeLiteral(value);
+          }
+        );
+        return stmt.trim().endsWith(";") ? stmt : stmt + ";";
+      });
+
+      return upsertStatements.join("\n");
+    }
+  );
+};
+
 // Handle multi-update placeholders: $<multiUpdate:arrayKey(updateTemplate)>
 const resolveMultiUpdates = (query, data) => {
   return query.replace(
@@ -116,17 +251,20 @@ const resolveSimplePlaceholders = (query, data) => {
   });
 };
 
-// Main function - now much simpler and easier to understand
+// Main function with explicit logical operator support
 export const compileSQLTemplate = (templateQuery, data) => {
-  // Process placeholders in order: bulk inserts → multi-updates → simple placeholders
+  // Process placeholders in order: bulk inserts → bulk upserts by key → bulk upserts → multi-updates → simple placeholders
+  // Note: bulkUpsertByKey requires array syntax: [field1 && field2], [field1 || field2], or [field1]
   let compiledQuery = resolveBulkInserts(templateQuery, data);
+  compiledQuery = resolveBulkUpsertsByKey(compiledQuery, data);
+  compiledQuery = resolveBulkUpserts(compiledQuery, data);
   compiledQuery = resolveMultiUpdates(compiledQuery, data);
   compiledQuery = resolveSimplePlaceholders(compiledQuery, data);
 
   return compiledQuery;
 };
 
-/** @insertExample1
+/**@insertExample1
 const insertTemplate1 = `
   INSERT INTO orders (user_id, total, item1_price, item2_price)
   VALUES ($[data.user.id], $[data.total], $[data.items[0].price], $[data.items[1].price]);
@@ -139,10 +277,7 @@ const insertData1 = {
 };
 
 const insertCompiledQuery1 = compileSQLTemplate(insertTemplate1, insertData1);
-console.log(insertCompiledQuery1);
-// INSERT INTO orders (user_id, total, item1_price, item2_price)
-// VALUES ($1, $2, $3, $4);
-
+console.log("insertCompiledQuery1:", insertCompiledQuery1);
 */
 
 /**@insertExample2
@@ -230,4 +365,259 @@ const updateData2 = {
 
 const updateCompiledQuery2 = compileSQLTemplate(updateTemplate2, updateData2);
 console.log("updateCompiledQuery2", updateCompiledQuery2);
-*/
+ */
+
+/**@bulkUpsertExample1 - Basic bulk upsert with ON CONFLICT
+const upsertTemplate1 = `
+$<bulkUpsert:$[data.ingredients](
+  INSERT INTO ingredients ("foodId", name, quantity, unit) 
+  VALUES ($[foodId], $[name], $[quantity], $[unit])
+  ON CONFLICT (id) DO UPDATE SET
+    name = $[name],
+    quantity = $[quantity],
+    unit = $[unit]
+)>`;
+
+const upsertData1 = {
+  ingredients: [
+    { id: 101, foodId: 1, name: "Paneer", quantity: "300", unit: "grams" },
+    { id: 102, foodId: 1, name: "Butter", quantity: "3", unit: "tbsp" },
+    { foodId: 1, name: "Tomatoes", quantity: "4", unit: "pieces" }, // New item without id
+  ],
+};
+
+const upsertCompiledQuery1 = compileSQLTemplate(upsertTemplate1, upsertData1);
+console.log("upsertCompiledQuery1", upsertCompiledQuery1);
+ */
+
+/**@bulkUpsertExample2 - Bulk upsert for instructions with conditional logic
+const upsertTemplate2 = `
+$<bulkUpsert:$[data.instructions](
+  INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") 
+  VALUES ($[foodId], $[stepNumber], $[stepDescription])
+  ON CONFLICT (id) DO UPDATE SET
+    "stepDescription" = $[stepDescription]
+)>`;
+
+const upsertData2 = {
+  instructions: [
+    {id: 1, foodId: 1, stepNumber: 1, stepDescription: "Heat butter in a large pan" },
+    {id: 2, foodId: 1, stepNumber: 2, stepDescription: "Add tomato puree and cook until thick" },
+    {id: 3, foodId: 1, stepNumber: 3, stepDescription: "Add paneer and simmer for 15 minutes" },
+    {foodId: 1, stepNumber: 3, stepDescription: "Add paneer and simmer for 15 minutes" },
+  ],
+};
+
+const upsertCompiledQuery2 = compileSQLTemplate(upsertTemplate2, upsertData2);
+console.log("upsertCompiledQuery2", upsertCompiledQuery2);
+ */
+
+/**@bulkUpsertByKeyExample1 - Basic usage with 'id' primary key (AND logic)
+const bulkUpsertByKeyTemplate1 = `
+$<bulkUpsertByKey:$[data.ingredients],[id && foodId](
+  INSERT INTO ingredients ("foodId", name, quantity, unit) 
+  VALUES ($[foodId], $[name], $[quantity], $[unit])
+|
+  UPDATE ingredients SET
+    name = $[name],
+    quantity = $[quantity],
+    unit = $[unit]
+  WHERE id = $[id] AND "foodId" = $[foodId]
+)>`;
+
+const bulkUpsertByKeyData1 = {
+  ingredients: [
+    { id: 101, foodId: 1, name: "Paneer", quantity: "300", unit: "grams" }, // Both id & foodId -> UPDATE
+    { id: 102, foodId: 1, name: "Butter", quantity: "3", unit: "tbsp" },   // Both id & foodId -> UPDATE
+    { foodId: 1, name: "Tomatoes", quantity: "4", unit: "pieces" },         // Missing id -> INSERT
+    { id: 104, name: "Garam Masala", quantity: "1", unit: "tsp" },          // Missing foodId -> INSERT
+  ],
+};
+
+const bulkUpsertByKeyCompiledQuery1 = compileSQLTemplate(bulkUpsertByKeyTemplate1, bulkUpsertByKeyData1);
+console.log("bulkUpsertByKeyCompiledQuery1", bulkUpsertByKeyCompiledQuery1);
+ */
+
+/**@bulkUpsertByKeyExample2 - Usage with OR logic (at least one field required)
+const bulkUpsertByKeyTemplate2 = `
+$<bulkUpsertByKey:$[data.users],[userId || email](
+  INSERT INTO users (userId, name, email, role) 
+  VALUES ($[userId], $[name], $[email], $[role])
+|
+  UPDATE users SET
+    name = $[name],
+    email = $[email],
+    role = $[role]
+  WHERE userId = $[userId] OR email = $[email]
+)>`;
+
+const bulkUpsertByKeyData2 = {
+  users: [
+    { userId: 1, name: "John Doe", email: "john@example.com", role: "admin" },     // Has both -> UPDATE
+    { name: "Jane Smith", email: "jane@example.com", role: "user" },               // Has email -> UPDATE
+    { userId: 3, name: "Bob Wilson", role: "moderator" },                          // Has userId -> UPDATE
+    { name: "New User", role: "guest" },                                           // Has neither -> INSERT
+  ],
+};
+
+const bulkUpsertByKeyCompiledQuery2 = compileSQLTemplate(bulkUpsertByKeyTemplate2, bulkUpsertByKeyData2);
+console.log("bulkUpsertByKeyCompiledQuery2", bulkUpsertByKeyCompiledQuery2);
+ */
+
+/**@bulkUpsertByKeyExample3 - Composite key with AND logic (all fields required)
+const bulkUpsertByKeyTemplate3 = `
+$<bulkUpsertByKey:$[data.userRoles],[userId && roleId](
+  INSERT INTO user_roles (userId, roleId, permissions, assignedDate) 
+  VALUES ($[userId], $[roleId], $[permissions], $[assignedDate])
+|
+  UPDATE user_roles SET
+    permissions = $[permissions],
+    assignedDate = $[assignedDate]
+  WHERE userId = $[userId] AND roleId = $[roleId]
+)>`;
+
+const bulkUpsertByKeyData3 = {
+  userRoles: [
+    { userId: 1, roleId: 2, permissions: "read,write", assignedDate: "2024-01-15" },     // Both keys exist -> UPDATE
+    { userId: 2, roleId: 3, permissions: "read", assignedDate: "2024-01-16" },           // Both keys exist -> UPDATE  
+    { userId: 3, permissions: "admin", assignedDate: "2024-01-17" },                     // Missing roleId -> INSERT
+    { roleId: 4, permissions: "guest", assignedDate: "2024-01-18" },                     // Missing userId -> INSERT
+    { permissions: "viewer", assignedDate: "2024-01-19" },                               // Missing both -> INSERT
+  ],
+};
+
+const bulkUpsertByKeyCompiledQuery3 = compileSQLTemplate(bulkUpsertByKeyTemplate3, bulkUpsertByKeyData3);
+console.log("bulkUpsertByKeyCompiledQuery3", bulkUpsertByKeyCompiledQuery3);
+ */
+
+/**@bulkUpsertByKeyExample4 - Triple composite key with OR logic (at least one required)
+const bulkUpsertByKeyTemplate4 = `
+$<bulkUpsertByKey:$[data.orderItems],[orderId || productId || variantId](
+  INSERT INTO order_items (orderId, productId, variantId, quantity, price) 
+  VALUES ($[orderId], $[productId], $[variantId], $[quantity], $[price])
+|
+  UPDATE order_items SET
+    quantity = $[quantity],
+    price = $[price]
+  WHERE (orderId = $[orderId] OR productId = $[productId] OR variantId = $[variantId])
+)>`;
+
+const bulkUpsertByKeyData4 = {
+  orderItems: [
+    { orderId: 1, productId: 10, variantId: 'red', quantity: 2, price: 25.99 },         // All 3 exist -> UPDATE
+    { orderId: 1, productId: 11, quantity: 1, price: 15.99 },                          // 2 exist -> UPDATE  
+    { productId: 12, quantity: 3, price: 9.99 },                                       // 1 exists -> UPDATE
+    { variantId: 'green', quantity: 1, price: 12.99 },                                 // 1 exists -> UPDATE
+    { quantity: 5, price: 8.99 },                                                      // None exist -> INSERT
+  ],
+};
+
+const bulkUpsertByKeyCompiledQuery4 = compileSQLTemplate(bulkUpsertByKeyTemplate4, bulkUpsertByKeyData4);
+console.log("bulkUpsertByKeyCompiledQuery4", bulkUpsertByKeyCompiledQuery4);
+ */
+
+/**@bulkUpsertByKeyExample5 - Complex AND logic example
+const bulkUpsertByKeyTemplate5 = `
+$<bulkUpsertByKey:$[data.items],[orderId && productId && variantId](
+  INSERT INTO order_items (orderId, productId, variantId, quantity, price) 
+  VALUES ($[orderId], $[productId], $[variantId], $[quantity], $[price])
+|
+  UPDATE order_items SET
+    quantity = $[quantity],
+    price = $[price]
+  WHERE orderId = $[orderId] AND productId = $[productId] AND variantId = $[variantId]
+)>`;
+
+const bulkUpsertByKeyData5 = {
+  items: [
+    { orderId: 1, productId: 10, variantId: 'red', quantity: 2, price: 25.99 },     // All 3 exist → UPDATE
+    { orderId: 1, productId: 11, quantity: 1, price: 15.99 },                       // Missing variantId → INSERT  
+    { productId: 12, quantity: 3, price: 9.99 },                                    // Missing orderId & variantId → INSERT
+    { quantity: 5, price: 12.99 },                                                  // All missing → INSERT
+    { orderId: 2, variantId: 'blue', quantity: 1, price: 8.99 },                   // Missing productId → INSERT
+  ],
+};
+
+const bulkUpsertByKeyCompiledQuery5 = compileSQLTemplate(bulkUpsertByKeyTemplate5, bulkUpsertByKeyData5);
+console.log("bulkUpsertByKeyCompiledQuery5", bulkUpsertByKeyCompiledQuery5);
+ */
+
+/**@bulkUpsertByKeyExample6 - Single field array example
+const bulkUpsertByKeyTemplate6 = `
+-- Single field (treated as AND logic - field must exist)
+$<bulkUpsertByKey:$[data.users],[id](
+  INSERT INTO users (name, email, role) 
+  VALUES ($[name], $[email], $[role])
+|
+  UPDATE users SET
+    name = $[name],
+    email = $[email],
+    role = $[role]
+  WHERE id = $[id]
+)>`;
+
+const bulkUpsertByKeyData6 = {
+  users: [
+    { id: 1, name: "John Doe", email: "john@example.com", role: "admin" },     // Has id -> UPDATE
+    { name: "Jane Smith", email: "jane@example.com", role: "user" },           // No id -> INSERT
+    { id: 3, name: "Bob Wilson", email: "bob@example.com", role: "moderator" }, // Has id -> UPDATE
+    { name: "Alice Brown", role: "guest" },                                    // No id -> INSERT
+  ],
+};
+
+const bulkUpsertByKeyCompiledQuery6 = compileSQLTemplate(bulkUpsertByKeyTemplate6, bulkUpsertByKeyData6);
+console.log("bulkUpsertByKeyCompiledQuery6", bulkUpsertByKeyCompiledQuery6);
+ */
+
+/**@bulkUpsertByKeyExample7 - Comparison: AND vs OR vs Single field
+const bulkUpsertByKeyTemplate7a = `
+-- ALL keys must exist (AND logic)
+$<bulkUpsertByKey:$[data.records],[userId && sessionId](
+  INSERT INTO user_sessions (userId, sessionId, lastActive) 
+  VALUES ($[userId], $[sessionId], $[lastActive])
+|
+  UPDATE user_sessions SET lastActive = $[lastActive]
+  WHERE userId = $[userId] AND sessionId = $[sessionId]
+)>`;
+
+const bulkUpsertByKeyTemplate7b = `
+-- AT LEAST ONE key must exist (OR logic)
+$<bulkUpsertByKey:$[data.records],[userId || sessionId](
+  INSERT INTO user_sessions (userId, sessionId, lastActive) 
+  VALUES ($[userId], $[sessionId], $[lastActive])
+|
+  UPDATE user_sessions SET lastActive = $[lastActive]
+  WHERE userId = $[userId] OR sessionId = $[sessionId]
+)>`;
+
+const bulkUpsertByKeyTemplate7c = `
+-- Single field (AND logic - field must exist)
+$<bulkUpsertByKey:$[data.records],[userId](
+  INSERT INTO user_sessions (userId, sessionId, lastActive) 
+  VALUES ($[userId], $[sessionId], $[lastActive])
+|
+  UPDATE user_sessions SET lastActive = $[lastActive]
+  WHERE userId = $[userId]
+)>`;
+
+const bulkUpsertByKeyData7 = {
+  records: [
+    { userId: 1, sessionId: 'abc123', lastActive: '2024-01-15 10:00:00' },    // Both exist
+    { userId: 2, lastActive: '2024-01-15 11:00:00' },                         // Only userId exists
+    { sessionId: 'def456', lastActive: '2024-01-15 12:00:00' },               // Only sessionId exists
+    { lastActive: '2024-01-15 13:00:00' },                                    // Neither exists
+  ],
+};
+
+console.log("=== AND logic (both required) ===");
+const compiled7a = compileSQLTemplate(bulkUpsertByKeyTemplate7a, bulkUpsertByKeyData7);
+console.log(compiled7a);
+
+console.log("=== OR logic (at least one required) ===");
+const compiled7b = compileSQLTemplate(bulkUpsertByKeyTemplate7b, bulkUpsertByKeyData7);
+console.log(compiled7b);
+
+console.log("=== Single field (userId required) ===");
+const compiled7c = compileSQLTemplate(bulkUpsertByKeyTemplate7c, bulkUpsertByKeyData7);
+console.log(compiled7c);
+ */

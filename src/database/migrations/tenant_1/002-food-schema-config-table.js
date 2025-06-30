@@ -547,7 +547,7 @@ export const up = async (client) => {
         query: `
         DO $$
         BEGIN
-          -- Update food table
+          -- Update food table  
           UPDATE food SET
             name = $[data.name],
             category = $[data.category],
@@ -555,7 +555,7 @@ export const up = async (client) => {
             "preparationTime" = $[data.preparationTime],
             description = $[data.description]
           WHERE id = $[data.id];
-  
+
           -- Update nutrition table
           UPDATE nutrition SET
             calories = $[data.nutrition.calories],
@@ -564,18 +564,24 @@ export const up = async (client) => {
             fats = $[data.nutrition.fats],
             vitamins = $[data.nutrition.vitamins]
           WHERE "foodId" = $[data.id];
-  
-          -- Update ingredients
-          $<multiUpdate:$[data.ingredients](
+
+          -- Bulk upsert ingredients (insert new ones, update existing ones)
+          $<bulkUpsertByKey:$[data.ingredients],[id](
+            INSERT INTO ingredients ("foodId", name, quantity, unit) 
+            VALUES ($[foodId], $[name], $[quantity], $[unit])
+          |
             UPDATE ingredients SET
               name = $[name],
               quantity = $[quantity],
               unit = $[unit]
             WHERE id = $[id]
           )>
-  
-          -- Update instructions
-          $<multiUpdate:$[data.instructions](
+
+          -- Bulk upsert instructions (insert new ones, update existing ones)
+          $<bulkUpsertByKey:$[data.instructions],[id](
+            INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") 
+            VALUES ($[foodId], $[stepNumber], $[stepDescription])
+          |
             UPDATE instructions SET
               "stepNumber" = $[stepNumber],
               "stepDescription" = $[stepDescription]
@@ -599,25 +605,35 @@ export const up = async (client) => {
             vitamins: "A, B12, D",
           },
           ingredients: [
-            { id: 10, name: "Paneer", quantity: "250", unit: "grams" },
-            { id: 11, name: "Butter", quantity: "3", unit: "tbsp" },
-            { id: 12, name: "Tomatoes", quantity: "4", unit: "pieces" },
+            { id: 10, foodId: 1, name: "Paneer", quantity: "250", unit: "grams" },     // UPDATE existing
+            { id: 11, foodId: 1, name: "Butter", quantity: "3", unit: "tbsp" },       // UPDATE existing
+            { id: 12, foodId: 1, name: "Tomatoes", quantity: "4", unit: "pieces" },   // UPDATE existing
+            { foodId: 1, name: "Heavy Cream", quantity: "0.5", unit: "cup" },         // INSERT new (no id)
+            { foodId: 1, name: "Garam Masala", quantity: "1", unit: "tsp" },          // INSERT new (no id)
           ],
           instructions: [
             {
               id: 21,
+              foodId: 1,
               stepNumber: 1,
               stepDescription: "Heat butter and sauté onions.",
             },
             {
               id: 22,
+              foodId: 1,
               stepNumber: 2,
               stepDescription: "Add tomato puree and cook well.",
             },
             {
               id: 23,
+              foodId: 1,
               stepNumber: 3,
               stepDescription: "Add paneer, simmer, and finish with cream.",
+            },
+            {
+              foodId: 1,
+              stepNumber: 4,
+              stepDescription: "Garnish with fresh coriander and serve hot.",
             },
           ],
         },
