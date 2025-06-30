@@ -55,7 +55,7 @@ const resolveBulkInserts = (query, data) => {
           if (part.startsWith("$[") && part.endsWith("]")) {
             const path = part.slice(2, -1);
             let value;
-            
+
             // Check for explicit root data syntax: $[data.property]
             if (path.startsWith("data.")) {
               value = getValueByPath(data, path);
@@ -68,7 +68,9 @@ const resolveBulkInserts = (query, data) => {
               const itemPath = path.slice(5); // Remove 'item.' prefix
               value = getValueByPathFromItem(item, itemPath);
               if (value === undefined) {
-                throw new Error(`Missing ${itemPath} in array item for ${arrayKey}`);
+                throw new Error(
+                  `Missing ${itemPath} in array item for ${arrayKey}`
+                );
               }
             } else {
               // Legacy syntax: $[property] (backward compatibility - looks in item)
@@ -106,7 +108,7 @@ Key Field Logic:
 CUD Operations:
 - CREATE: Items without required key fields → execute insertTemplate
 - UPDATE: Items with required key fields → execute updateTemplate  
-- DELETE: Items with "isDeleteForQuery: true" → auto-generate DELETE statement
+- DELETE: Items with "isDeleteFromDB: true" → auto-generate DELETE statement
 
 DELETE Logic:
 - Uses same key fields from keyFields expression
@@ -118,7 +120,7 @@ DELETE Logic:
 Examples:
 { id: 1, name: "Updated" }           → UPDATE (has key field)
 { name: "New Item" }                 → INSERT (missing key field)  
-{ id: 5, isDeleteForQuery: true }    → DELETE FROM table WHERE id = 5
+{ id: 5, isDeleteFromDB: true }    → DELETE FROM table WHERE id = 5
  */
 const resolveBulkCudByKey = (query, data) => {
   return query.replace(
@@ -168,24 +170,26 @@ const resolveBulkCudByKey = (query, data) => {
 
       const statements = [];
 
-            arrayData.forEach((item) => {
+      arrayData.forEach((item) => {
         // Check for deletion flag first
-        if (item.isDeleteForQuery === true) {
+        if (item.isDeleteFromDB === true) {
           // Generate DELETE statement using the same key fields
           // Extract table name from UPDATE template
           const tableNameMatch = updateTemplate.match(/UPDATE\s+(\w+)\s+SET/i);
           if (!tableNameMatch) {
-            throw new Error(`Cannot extract table name from UPDATE template for DELETE operation`);
+            throw new Error(
+              `Cannot extract table name from UPDATE template for DELETE operation`
+            );
           }
           const tableName = tableNameMatch[1];
-          
+
           // Build WHERE clause - for OR logic, only include fields that exist
           const whereConditions = [];
-          
-          primaryKeyFields.forEach(field => {
+
+          primaryKeyFields.forEach((field) => {
             let value;
             let actualField = field;
-            
+
             // Handle explicit item syntax: item.property
             if (field.startsWith("item.")) {
               actualField = field.slice(5); // Remove 'item.' prefix
@@ -195,30 +199,38 @@ const resolveBulkCudByKey = (query, data) => {
               actualField = field; // Use field as-is for legacy syntax
               value = getValueByPathFromItem(item, field);
             }
-            
+
             // For DELETE operations, handle missing fields based on logic type
             if (value !== null && value !== undefined) {
               // Field exists, add to WHERE clause
               whereConditions.push(`${actualField} = ${escapeLiteral(value)}`);
             } else if (requireAllKeys) {
               // AND logic requires all fields to exist
-              throw new Error(`Cannot DELETE: missing key field '${actualField}' in item (AND logic requires all fields)`);
+              throw new Error(
+                `Cannot DELETE: missing key field '${actualField}' in item (AND logic requires all fields)`
+              );
             }
             // For OR logic, missing fields are simply omitted from WHERE clause
           });
-          
+
           // Ensure we have at least one condition for the DELETE
           if (whereConditions.length === 0) {
-            throw new Error(`Cannot DELETE: no key fields found in item. Available fields: ${Object.keys(item).join(', ')}`);
+            throw new Error(
+              `Cannot DELETE: no key fields found in item. Available fields: ${Object.keys(
+                item
+              ).join(", ")}`
+            );
           }
-          
-          const deleteStmt = `DELETE FROM ${tableName} WHERE ${whereConditions.join(requireAllKeys ? ' AND ' : ' OR')};`;
+
+          const deleteStmt = `DELETE FROM ${tableName} WHERE ${whereConditions.join(
+            requireAllKeys ? " AND " : " OR"
+          )};`;
           statements.push(deleteStmt);
           return; // Skip UPDATE/INSERT logic
         }
-        
+
         let shouldUpdate;
-        
+
         if (requireAllKeys) {
           // ALL primary key fields must exist and be not null/undefined (AND logic)
           shouldUpdate = primaryKeyFields.every((field) => {
@@ -248,7 +260,7 @@ const resolveBulkCudByKey = (query, data) => {
             return value !== null && value !== undefined;
           });
         }
-        
+
         // If conditions are met, do UPDATE; otherwise do INSERT
         if (shouldUpdate) {
           const stmt = updateTemplate.replace(
@@ -329,7 +341,9 @@ const resolveBulkUpserts = (query, data) => {
             if (path.startsWith("data.")) {
               value = getValueByPath(data, path);
               if (value === undefined) {
-                throw new Error(`Missing value for key: ${path} in root data for ${arrayKey}`);
+                throw new Error(
+                  `Missing value for key: ${path} in root data for ${arrayKey}`
+                );
               }
             }
             // Check for explicit item syntax: $[item.property]
@@ -337,13 +351,17 @@ const resolveBulkUpserts = (query, data) => {
               const itemPath = path.slice(5); // Remove 'item.' prefix
               value = getValueByPathFromItem(item, itemPath);
               if (value === undefined) {
-                throw new Error(`Missing value for key: ${itemPath} in array item for ${arrayKey}`);
+                throw new Error(
+                  `Missing value for key: ${itemPath} in array item for ${arrayKey}`
+                );
               }
             } else {
               // Legacy syntax: $[property] (backward compatibility - looks in item)
               value = getValueByPathFromItem(item, path);
               if (value === undefined) {
-                throw new Error(`Missing value for key: ${path} in ${arrayKey}`);
+                throw new Error(
+                  `Missing value for key: ${path} in ${arrayKey}`
+                );
               }
             }
             return escapeLiteral(value);
@@ -383,7 +401,9 @@ const resolveMultiUpdates = (query, data) => {
             if (path.startsWith("data.")) {
               value = getValueByPath(data, path);
               if (value === undefined) {
-                throw new Error(`Missing value for key: ${path} in root data for ${arrayKey}`);
+                throw new Error(
+                  `Missing value for key: ${path} in root data for ${arrayKey}`
+                );
               }
             }
             // Check for explicit item syntax: $[item.property]
@@ -391,13 +411,17 @@ const resolveMultiUpdates = (query, data) => {
               const itemPath = path.slice(5); // Remove 'item.' prefix
               value = getValueByPathFromItem(item, itemPath);
               if (value === undefined) {
-                throw new Error(`Missing value for key: ${itemPath} in array item for ${arrayKey}`);
+                throw new Error(
+                  `Missing value for key: ${itemPath} in array item for ${arrayKey}`
+                );
               }
             } else {
               // Legacy syntax: $[property] (backward compatibility - looks in item)
               value = getValueByPathFromItem(item, path);
               if (value === undefined) {
-                throw new Error(`Missing value for key: ${path} in ${arrayKey}`);
+                throw new Error(
+                  `Missing value for key: ${path} in ${arrayKey}`
+                );
               }
             }
             return escapeLiteral(value);
@@ -425,28 +449,28 @@ const resolveSimplePlaceholders = (query, data) => {
 // Main function with mixed syntax support, logical operators, and full CUD operations
 export const compileSQLTemplate = (templateQuery, data) => {
   // Process placeholders in order: bulk inserts → bulk CUD by key → bulk upserts → multi-updates → simple placeholders
-  // 
+  //
   // Supported syntax:
   // - Root data access: $[data.property] - accesses properties from the root data object
   // - Item data access: $[item.property] - accesses properties from current array item
   // - Legacy syntax: $[property] - looks in current array item (backward compatibility)
-  // 
+  //
   // CUD Operations:
   // - CREATE: Items without key fields get inserted
   // - UPDATE: Items with key fields get updated
-  // - DELETE: Items with "isDeleteForQuery: true" get deleted using key fields
-  // 
+  // - DELETE: Items with "isDeleteFromDB: true" get deleted using key fields
+  //
   // Examples:
   // - Mixed: $<bulk:$[data.ingredients]($[data.id], $[item.name], $[item.quantity])>
   // - Keys: $<bulkCudByKey:$[data.items],[item.id && item.categoryId](insertTemplate|updateTemplate)>
-  // - Delete: { id: 5, isDeleteForQuery: true } → DELETE FROM table WHERE id = 5
-  // 
+  // - Delete: { id: 5, isDeleteFromDB: true } → DELETE FROM table WHERE id = 5
+  //
   let compiledQuery = resolveBulkInserts(templateQuery, data);
   compiledQuery = resolveBulkCudByKey(compiledQuery, data);
   compiledQuery = resolveBulkUpserts(compiledQuery, data);
   compiledQuery = resolveMultiUpdates(compiledQuery, data);
   compiledQuery = resolveSimplePlaceholders(compiledQuery, data);
-  
+
   return compiledQuery;
 };
 
@@ -642,9 +666,9 @@ const cudData = {
   ingredients: [
     { id: 1, name: "Updated Paneer", quantity: "300", unit: "grams" },        // Has id → UPDATE
     { name: "New Ginger", quantity: "2", unit: "inches" },                   // No id → INSERT
-    { id: 3, isDeleteForQuery: true },                                       // Has deletion flag → DELETE
+    { id: 3, isDeleteFromDB: true },                                       // Has deletion flag → DELETE
     { id: 4, name: "Updated Garlic", quantity: "6", unit: "cloves" },        // Has id → UPDATE
-    { id: 5, isDeleteForQuery: true },                                       // Has deletion flag → DELETE
+    { id: 5, isDeleteFromDB: true },                                       // Has deletion flag → DELETE
     { name: "Fresh Cilantro", quantity: "1", unit: "bunch" },                // No id → INSERT
   ],
 };
@@ -672,9 +696,9 @@ const compositeDeleteData = {
   userRoles: [
     { userId: 1, roleId: 2, permissions: "read,write,delete" },               // Both keys → UPDATE
     { userId: 2, roleId: 3, permissions: "read" },                           // Both keys → UPDATE  
-    { userId: 1, roleId: 3, isDeleteForQuery: true },                        // Both keys + delete flag → DELETE
+    { userId: 1, roleId: 3, isDeleteFromDB: true },                        // Both keys + delete flag → DELETE
     { userId: 3, permissions: "admin" },                                     // Missing roleId → INSERT
-    { userId: 2, roleId: 5, isDeleteForQuery: true },                        // Both keys + delete flag → DELETE
+    { userId: 2, roleId: 5, isDeleteFromDB: true },                        // Both keys + delete flag → DELETE
     { userId: 4, roleId: 1, permissions: "read,write" },                     // Both keys → UPDATE (or INSERT if not exists)
   ],
 };
