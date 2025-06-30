@@ -607,7 +607,7 @@ export const up = async (client) => {
           ingredients: [
             { id: 10, name: "Paneer", quantity: "250", unit: "grams" },     // UPDATE existing (has id)
             { id: 11, name: "Butter", quantity: "3", unit: "tbsp" },       // UPDATE existing (has id)
-            { id: 12, isDeleteForQuery: true },                            // DELETE existing (has id + delete flag)
+            { id: 12, isDeleteFromDB: true },                            // DELETE existing (has id + delete flag)
             { name: "Heavy Cream", quantity: "0.5", unit: "cup" },         // INSERT new (no id)
             { name: "Garam Masala", quantity: "1", unit: "tsp" },          // INSERT new (no id)
           ],
@@ -624,7 +624,7 @@ export const up = async (client) => {
             },
             {
               id: 23,
-              isDeleteForQuery: true,                                      // DELETE existing instruction
+              isDeleteFromDB: true,                                      // DELETE existing instruction
             },
             {
               stepNumber: 4,
