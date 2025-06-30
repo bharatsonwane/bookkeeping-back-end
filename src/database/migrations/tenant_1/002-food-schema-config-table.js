@@ -565,8 +565,8 @@ export const up = async (client) => {
             vitamins = $[data.nutrition.vitamins]
           WHERE "foodId" = $[data.id];
 
-          -- Bulk upsert ingredients (using mixed syntax: root data ID + item properties)
-          $<bulkUpsertByKey:$[data.ingredients],[item.id](
+          -- Bulk CUD ingredients (using mixed syntax: root data ID + item properties)
+          $<bulkCudByKey:$[data.ingredients],[item.id](
             INSERT INTO ingredients ("foodId", name, quantity, unit) 
             VALUES ($[data.id], $[item.name], $[item.quantity], $[item.unit])
           |
@@ -577,8 +577,8 @@ export const up = async (client) => {
             WHERE id = $[item.id]
           )>
 
-          -- Bulk upsert instructions (using mixed syntax: root data ID + item properties)
-          $<bulkUpsertByKey:$[data.instructions],[item.id](
+          -- Bulk CUD instructions (using mixed syntax: root data ID + item properties)
+          $<bulkCudByKey:$[data.instructions],[item.id](
             INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") 
             VALUES ($[data.id], $[item.stepNumber], $[item.stepDescription])
           |
@@ -605,11 +605,11 @@ export const up = async (client) => {
             vitamins: "A, B12, D",
           },
           ingredients: [
-            { id: 10, name: "Paneer", quantity: "250", unit: "grams" },     // UPDATE existing (foodId from root data.id)
-            { id: 11, name: "Butter", quantity: "3", unit: "tbsp" },       // UPDATE existing (foodId from root data.id)
-            { id: 12, name: "Tomatoes", quantity: "4", unit: "pieces" },   // UPDATE existing (foodId from root data.id)
-            { name: "Heavy Cream", quantity: "0.5", unit: "cup" },         // INSERT new (no id, foodId from root data.id)
-            { name: "Garam Masala", quantity: "1", unit: "tsp" },          // INSERT new (no id, foodId from root data.id)
+            { id: 10, name: "Paneer", quantity: "250", unit: "grams" },     // UPDATE existing (has id)
+            { id: 11, name: "Butter", quantity: "3", unit: "tbsp" },       // UPDATE existing (has id)
+            { id: 12, isDeleteForQuery: true },                            // DELETE existing (has id + delete flag)
+            { name: "Heavy Cream", quantity: "0.5", unit: "cup" },         // INSERT new (no id)
+            { name: "Garam Masala", quantity: "1", unit: "tsp" },          // INSERT new (no id)
           ],
           instructions: [
             {
@@ -624,8 +624,7 @@ export const up = async (client) => {
             },
             {
               id: 23,
-              stepNumber: 3,
-              stepDescription: "Add paneer, simmer, and finish with cream.",
+              isDeleteForQuery: true,                                      // DELETE existing instruction
             },
             {
               stepNumber: 4,

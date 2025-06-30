@@ -34,7 +34,7 @@ const getValueByPathFromItem = (obj, path) => {
 // Supports mixed syntax: $[data.property] for root data, $[item.property] for array items, and legacy $[property]
 const resolveBulkInserts = (query, data) => {
   return query.replace(
-    /\$<bulk:([^(]+)\(([^)]+)\)>/g,
+    /\$<bulk:([^(]+)\(([\s\S]*?)\)>/g,
     (_, arrayKey, content) => {
       // Check if arrayKey contains a placeholder like $[path]
       let resolvedArrayKey = arrayKey.trim();
@@ -89,20 +89,47 @@ const resolveBulkInserts = (query, data) => {
   );
 };
 
-// Handle bulk upsert by specified keys with explicit logical operators:
-// $<bulkUpsertByKey:arrayKey,[field1 && field2 && field3](insertTemplate|updateTemplate)> - ALL fields must exist (AND logic)
-// $<bulkUpsertByKey:arrayKey,[field1 || field2 || field3](insertTemplate|updateTemplate)> - AT LEAST ONE field must exist (OR logic)
-// $<bulkUpsertByKey:arrayKey,[field1](insertTemplate|updateTemplate)> - Single field (treated as AND logic)
-const resolveBulkUpsertsByKey = (query, data) => {
+/** 
+Handle bulk CUD (Create, Update, Delete) by specified keys with explicit logical operators:
+
+Syntax: $<bulkCudByKey:arrayKey,[keyFields](insertTemplate|updateTemplate)>
+- arrayKey: Path to array in data (e.g., $[data.ingredients])
+- keyFields: Logical expression with key fields (e.g., [item.id && item.foodId])
+- insertTemplate: SQL for INSERT operations
+- updateTemplate: SQL for UPDATE operations
+
+Key Field Logic:
+- AND logic: [field1 && field2] - ALL fields must exist for UPDATE
+- OR logic: [field1 || field2] - AT LEAST ONE field must exist for UPDATE  
+- Single field: [field1] - Field must exist for UPDATE
+
+CUD Operations:
+- CREATE: Items without required key fields → execute insertTemplate
+- UPDATE: Items with required key fields → execute updateTemplate  
+- DELETE: Items with "isDeleteForQuery: true" → auto-generate DELETE statement
+
+DELETE Logic:
+- Uses same key fields from keyFields expression
+- For AND logic: requires ALL key fields to be present
+- For OR logic: uses ANY available key fields  
+- Auto-extracts table name from UPDATE template
+- Generates: DELETE FROM table WHERE keyField1 = value1 [AND/OR keyField2 = value2]
+
+Examples:
+{ id: 1, name: "Updated" }           → UPDATE (has key field)
+{ name: "New Item" }                 → INSERT (missing key field)  
+{ id: 5, isDeleteForQuery: true }    → DELETE FROM table WHERE id = 5
+ */
+const resolveBulkCudByKey = (query, data) => {
   return query.replace(
-    /\$<bulkUpsertByKey:([^(]+)\(([^|]+)\|([^)]+)\)>/g,
+    /\$<bulkCudByKey:([^(]+)\(([\s\S]*?)\|([\s\S]*?)\)>/g,
     (_, arrayKeyAndPK, insertTemplate, updateTemplate) => {
       // Parse arrayKey and primaryKeyFields with logical operators
       // Look for pattern: arrayKey,[field1 && field2] or arrayKey,[field1 || field2]
       const arrayMatch = arrayKeyAndPK.match(/^(.*?),\[([^\]]+)\]$/);
       if (!arrayMatch) {
         throw new Error(
-          `bulkUpsertByKey requires array syntax: [field1 && field2] or [field1 || field2]. Got: ${arrayKeyAndPK}`
+          `bulkCudByKey requires array syntax: [field1 && field2] or [field1 || field2]. Got: ${arrayKeyAndPK}`
         );
       }
 
@@ -141,9 +168,57 @@ const resolveBulkUpsertsByKey = (query, data) => {
 
       const statements = [];
 
-      arrayData.forEach((item) => {
+            arrayData.forEach((item) => {
+        // Check for deletion flag first
+        if (item.isDeleteForQuery === true) {
+          // Generate DELETE statement using the same key fields
+          // Extract table name from UPDATE template
+          const tableNameMatch = updateTemplate.match(/UPDATE\s+(\w+)\s+SET/i);
+          if (!tableNameMatch) {
+            throw new Error(`Cannot extract table name from UPDATE template for DELETE operation`);
+          }
+          const tableName = tableNameMatch[1];
+          
+          // Build WHERE clause - for OR logic, only include fields that exist
+          const whereConditions = [];
+          
+          primaryKeyFields.forEach(field => {
+            let value;
+            let actualField = field;
+            
+            // Handle explicit item syntax: item.property
+            if (field.startsWith("item.")) {
+              actualField = field.slice(5); // Remove 'item.' prefix
+              value = getValueByPathFromItem(item, actualField);
+            } else {
+              // Legacy syntax: property (backward compatibility)
+              actualField = field; // Use field as-is for legacy syntax
+              value = getValueByPathFromItem(item, field);
+            }
+            
+            // For DELETE operations, handle missing fields based on logic type
+            if (value !== null && value !== undefined) {
+              // Field exists, add to WHERE clause
+              whereConditions.push(`${actualField} = ${escapeLiteral(value)}`);
+            } else if (requireAllKeys) {
+              // AND logic requires all fields to exist
+              throw new Error(`Cannot DELETE: missing key field '${actualField}' in item (AND logic requires all fields)`);
+            }
+            // For OR logic, missing fields are simply omitted from WHERE clause
+          });
+          
+          // Ensure we have at least one condition for the DELETE
+          if (whereConditions.length === 0) {
+            throw new Error(`Cannot DELETE: no key fields found in item. Available fields: ${Object.keys(item).join(', ')}`);
+          }
+          
+          const deleteStmt = `DELETE FROM ${tableName} WHERE ${whereConditions.join(requireAllKeys ? ' AND ' : ' OR')};`;
+          statements.push(deleteStmt);
+          return; // Skip UPDATE/INSERT logic
+        }
+        
         let shouldUpdate;
-
+        
         if (requireAllKeys) {
           // ALL primary key fields must exist and be not null/undefined (AND logic)
           shouldUpdate = primaryKeyFields.every((field) => {
@@ -173,7 +248,7 @@ const resolveBulkUpsertsByKey = (query, data) => {
             return value !== null && value !== undefined;
           });
         }
-
+        
         // If conditions are met, do UPDATE; otherwise do INSERT
         if (shouldUpdate) {
           const stmt = updateTemplate.replace(
@@ -285,7 +360,7 @@ const resolveBulkUpserts = (query, data) => {
 // Handle multi-update placeholders: $<multiUpdate:arrayKey(updateTemplate)>
 const resolveMultiUpdates = (query, data) => {
   return query.replace(
-    /\$<multiUpdate:([^(]+)\(([^)]+)\)>/g,
+    /\$<multiUpdate:([^(]+)\(([\s\S]*?)\)>/g,
     (_, arrayKey, updateTemplate) => {
       // Check if arrayKey contains a placeholder like $[path]
       let resolvedArrayKey = arrayKey.trim();
@@ -347,25 +422,31 @@ const resolveSimplePlaceholders = (query, data) => {
   });
 };
 
-// Main function with mixed syntax support and logical operators
+// Main function with mixed syntax support, logical operators, and full CUD operations
 export const compileSQLTemplate = (templateQuery, data) => {
-  // Process placeholders in order: bulk inserts → bulk upserts by key → bulk upserts → multi-updates → simple placeholders
+  // Process placeholders in order: bulk inserts → bulk CUD by key → bulk upserts → multi-updates → simple placeholders
   // 
   // Supported syntax:
   // - Root data access: $[data.property] - accesses properties from the root data object
   // - Item data access: $[item.property] - accesses properties from current array item
   // - Legacy syntax: $[property] - looks in current array item (backward compatibility)
   // 
+  // CUD Operations:
+  // - CREATE: Items without key fields get inserted
+  // - UPDATE: Items with key fields get updated
+  // - DELETE: Items with "isDeleteForQuery: true" get deleted using key fields
+  // 
   // Examples:
   // - Mixed: $<bulk:$[data.ingredients]($[data.id], $[item.name], $[item.quantity])>
-  // - Keys: $<bulkUpsertByKey:$[data.items],[item.id && item.categoryId](...)>
+  // - Keys: $<bulkCudByKey:$[data.items],[item.id && item.categoryId](insertTemplate|updateTemplate)>
+  // - Delete: { id: 5, isDeleteForQuery: true } → DELETE FROM table WHERE id = 5
   // 
   let compiledQuery = resolveBulkInserts(templateQuery, data);
-  compiledQuery = resolveBulkUpsertsByKey(compiledQuery, data);
+  compiledQuery = resolveBulkCudByKey(compiledQuery, data);
   compiledQuery = resolveBulkUpserts(compiledQuery, data);
   compiledQuery = resolveMultiUpdates(compiledQuery, data);
   compiledQuery = resolveSimplePlaceholders(compiledQuery, data);
-
+  
   return compiledQuery;
 };
 
@@ -517,9 +598,9 @@ const upsertCompiledQuery2 = compileSQLTemplate(upsertTemplate2, upsertData2);
 console.log("upsertCompiledQuery2", upsertCompiledQuery2);
  */
 
-/**@bulkUpsertByKeyExample1 - Basic usage with explicit item syntax (recommended)
-const bulkUpsertByKeyTemplate1 = `
-$<bulkUpsertByKey:$[data.ingredients],[item.id && item.foodId](
+/**@bulkCudByKeyExample1 - Basic usage with explicit item syntax (recommended)
+const bulkCudByKeyTemplate1 = `
+$<bulkCudByKey:$[data.ingredients],[item.id && item.foodId](
   INSERT INTO ingredients ("foodId", name, quantity, unit) 
   VALUES ($[item.foodId], $[item.name], $[item.quantity], $[item.unit])
 |
@@ -530,7 +611,7 @@ $<bulkUpsertByKey:$[data.ingredients],[item.id && item.foodId](
   WHERE id = $[item.id] AND "foodId" = $[item.foodId]
 )>`;
 
-const bulkUpsertByKeyData1 = {
+const bulkCudByKeyData1 = {
   ingredients: [
     { id: 101, foodId: 1, name: "Paneer", quantity: "300", unit: "grams" }, // Both id & foodId -> UPDATE
     { id: 102, foodId: 1, name: "Butter", quantity: "3", unit: "tbsp" },   // Both id & foodId -> UPDATE
@@ -539,8 +620,68 @@ const bulkUpsertByKeyData1 = {
   ],
 };
 
-const bulkUpsertByKeyCompiledQuery1 = compileSQLTemplate(bulkUpsertByKeyTemplate1, bulkUpsertByKeyData1);
-console.log("bulkUpsertByKeyCompiledQuery1", bulkUpsertByKeyCompiledQuery1);
+const bulkCudByKeyCompiledQuery1 = compileSQLTemplate(bulkCudByKeyTemplate1, bulkCudByKeyData1);
+console.log("bulkCudByKeyCompiledQuery1", bulkCudByKeyCompiledQuery1);
+ */
+
+/**@bulkCudByKeyDeleteExample - CUD operations with deletion support
+const cudTemplate = `
+$<bulkCudByKey:$[data.ingredients],[item.id](
+  INSERT INTO ingredients ("foodId", name, quantity, unit) 
+  VALUES ($[data.id], $[item.name], $[item.quantity], $[item.unit])
+|
+  UPDATE ingredients SET
+    name = $[item.name],
+    quantity = $[item.quantity],
+    unit = $[item.unit]
+  WHERE id = $[item.id]
+)>`;
+
+const cudData = {
+  id: 1, // Food ID
+  ingredients: [
+    { id: 1, name: "Updated Paneer", quantity: "300", unit: "grams" },        // Has id → UPDATE
+    { name: "New Ginger", quantity: "2", unit: "inches" },                   // No id → INSERT
+    { id: 3, isDeleteForQuery: true },                                       // Has deletion flag → DELETE
+    { id: 4, name: "Updated Garlic", quantity: "6", unit: "cloves" },        // Has id → UPDATE
+    { id: 5, isDeleteForQuery: true },                                       // Has deletion flag → DELETE
+    { name: "Fresh Cilantro", quantity: "1", unit: "bunch" },                // No id → INSERT
+  ],
+};
+
+const cudCompiledQuery = compileSQLTemplate(cudTemplate, cudData);
+console.log("🗑️ CUD with DELETE support:");
+console.log(cudCompiledQuery);
+ */
+
+/**@bulkCudByKeyDeleteCompositeExample - DELETE with composite keys and logical operators
+const compositeDeleteTemplate = `
+$<bulkCudByKey:$[data.userRoles],[item.userId && item.roleId](
+  INSERT INTO user_roles (userId, roleId, permissions, assignedBy) 
+  VALUES ($[item.userId], $[item.roleId], $[item.permissions], $[data.currentUserId])
+|
+  UPDATE user_roles SET
+    permissions = $[item.permissions],
+    lastModified = NOW(),
+    modifiedBy = $[data.currentUserId]
+  WHERE userId = $[item.userId] AND roleId = $[item.roleId]
+)>`;
+
+const compositeDeleteData = {
+  currentUserId: 100,
+  userRoles: [
+    { userId: 1, roleId: 2, permissions: "read,write,delete" },               // Both keys → UPDATE
+    { userId: 2, roleId: 3, permissions: "read" },                           // Both keys → UPDATE  
+    { userId: 1, roleId: 3, isDeleteForQuery: true },                        // Both keys + delete flag → DELETE
+    { userId: 3, permissions: "admin" },                                     // Missing roleId → INSERT
+    { userId: 2, roleId: 5, isDeleteForQuery: true },                        // Both keys + delete flag → DELETE
+    { userId: 4, roleId: 1, permissions: "read,write" },                     // Both keys → UPDATE (or INSERT if not exists)
+  ],
+};
+
+const compositeDeleteCompiled = compileSQLTemplate(compositeDeleteTemplate, compositeDeleteData);
+console.log("🗑️ Composite keys with DELETE:");
+console.log(compositeDeleteCompiled);
  */
 
 /**@bulkUpsertByKeyExample2 - Usage with OR logic (at least one field required)
@@ -680,8 +821,8 @@ const comprehensiveTemplate = `
 INSERT INTO products (category_id, name, price) VALUES
 $<bulk:$[data.products](1, $[item.name], $[item.price])>;
 
--- Bulk upserts with explicit item syntax and logical operators
-$<bulkUpsertByKey:$[data.inventory],[item.productId && item.warehouseId](
+-- Bulk CUD with explicit item syntax and logical operators
+$<bulkCudByKey:$[data.inventory],[item.productId && item.warehouseId](
   INSERT INTO inventory (productId, warehouseId, quantity, lastUpdated) 
   VALUES ($[item.productId], $[item.warehouseId], $[item.quantity], NOW())
 |
@@ -779,8 +920,8 @@ INSERT INTO categories (name, created_by) VALUES ($[data.categoryName], $[data.u
 INSERT INTO products (category_id, name, price, created_by) VALUES
 $<bulk:$[data.products]($[data.categoryId], $[item.name], $[item.price], $[data.userId])>;
 
--- 3. Bulk upserts with mixed syntax and logical operators
-$<bulkUpsertByKey:$[data.inventory],[item.id](
+-- 3. Bulk CUD with mixed syntax and logical operators
+$<bulkCudByKey:$[data.inventory],[item.id](
   INSERT INTO inventory (product_id, warehouse_id, quantity, updated_by) 
   VALUES ($[item.productId], $[data.warehouseId], $[item.quantity], $[data.userId])
 |
@@ -792,7 +933,7 @@ $<bulkUpsertByKey:$[data.inventory],[item.id](
 )>
 
 -- 4. Complex logical operators with mixed syntax
-$<bulkUpsertByKey:$[data.orders],[item.orderId && item.customerId](
+$<bulkCudByKey:$[data.orders],[item.orderId && item.customerId](
   INSERT INTO order_items (order_id, customer_id, product_id, quantity, created_by) 
   VALUES ($[item.orderId], $[item.customerId], $[item.productId], $[item.quantity], $[data.userId])
 |
