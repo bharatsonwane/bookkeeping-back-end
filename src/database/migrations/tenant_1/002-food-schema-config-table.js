@@ -491,13 +491,13 @@ export const up = async (client) => {
             $[data.nutrition.vitamins]
           );
   
-          -- Insert ingredients
+                    -- Insert ingredients (using mixed syntax: new_food_id is local variable, item properties from array)
           INSERT INTO ingredients ("foodId", name, quantity, unit) VALUES
-          $<bulk:$[data.ingredients](new_food_id, $[name], $[quantity], $[unit])>;
-  
-          -- Insert instructions
+          $<bulk:$[data.ingredients](new_food_id, $[item.name], $[item.quantity], $[item.unit])>;
+
+          -- Insert instructions (using mixed syntax: new_food_id is local variable, item properties from array)
           INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") VALUES
-          $<bulk:$[data.instructions](new_food_id, $[stepNumber], $[stepDescription])>;
+          $<bulk:$[data.instructions](new_food_id, $[item.stepNumber], $[item.stepDescription])>;
         END $$;
       `,
         sampleDataValue: {
@@ -565,27 +565,27 @@ export const up = async (client) => {
             vitamins = $[data.nutrition.vitamins]
           WHERE "foodId" = $[data.id];
 
-          -- Bulk upsert ingredients (insert new ones, update existing ones)
-          $<bulkUpsertByKey:$[data.ingredients],[id](
+          -- Bulk upsert ingredients (using mixed syntax: root data ID + item properties)
+          $<bulkUpsertByKey:$[data.ingredients],[item.id](
             INSERT INTO ingredients ("foodId", name, quantity, unit) 
-            VALUES ($[foodId], $[name], $[quantity], $[unit])
+            VALUES ($[data.id], $[item.name], $[item.quantity], $[item.unit])
           |
             UPDATE ingredients SET
-              name = $[name],
-              quantity = $[quantity],
-              unit = $[unit]
-            WHERE id = $[id]
+              name = $[item.name],
+              quantity = $[item.quantity],
+              unit = $[item.unit]
+            WHERE id = $[item.id]
           )>
 
-          -- Bulk upsert instructions (insert new ones, update existing ones)
-          $<bulkUpsertByKey:$[data.instructions],[id](
+          -- Bulk upsert instructions (using mixed syntax: root data ID + item properties)
+          $<bulkUpsertByKey:$[data.instructions],[item.id](
             INSERT INTO instructions ("foodId", "stepNumber", "stepDescription") 
-            VALUES ($[foodId], $[stepNumber], $[stepDescription])
+            VALUES ($[data.id], $[item.stepNumber], $[item.stepDescription])
           |
             UPDATE instructions SET
-              "stepNumber" = $[stepNumber],
-              "stepDescription" = $[stepDescription]
-            WHERE id = $[id]
+              "stepNumber" = $[item.stepNumber],
+              "stepDescription" = $[item.stepDescription]
+            WHERE id = $[item.id]
           )>
         END $$;
       `,
@@ -605,33 +605,29 @@ export const up = async (client) => {
             vitamins: "A, B12, D",
           },
           ingredients: [
-            { id: 10, foodId: 1, name: "Paneer", quantity: "250", unit: "grams" },     // UPDATE existing
-            { id: 11, foodId: 1, name: "Butter", quantity: "3", unit: "tbsp" },       // UPDATE existing
-            { id: 12, foodId: 1, name: "Tomatoes", quantity: "4", unit: "pieces" },   // UPDATE existing
-            { foodId: 1, name: "Heavy Cream", quantity: "0.5", unit: "cup" },         // INSERT new (no id)
-            { foodId: 1, name: "Garam Masala", quantity: "1", unit: "tsp" },          // INSERT new (no id)
+            { id: 10, name: "Paneer", quantity: "250", unit: "grams" },     // UPDATE existing (foodId from root data.id)
+            { id: 11, name: "Butter", quantity: "3", unit: "tbsp" },       // UPDATE existing (foodId from root data.id)
+            { id: 12, name: "Tomatoes", quantity: "4", unit: "pieces" },   // UPDATE existing (foodId from root data.id)
+            { name: "Heavy Cream", quantity: "0.5", unit: "cup" },         // INSERT new (no id, foodId from root data.id)
+            { name: "Garam Masala", quantity: "1", unit: "tsp" },          // INSERT new (no id, foodId from root data.id)
           ],
           instructions: [
             {
               id: 21,
-              foodId: 1,
               stepNumber: 1,
               stepDescription: "Heat butter and sauté onions.",
             },
             {
               id: 22,
-              foodId: 1,
               stepNumber: 2,
               stepDescription: "Add tomato puree and cook well.",
             },
             {
               id: 23,
-              foodId: 1,
               stepNumber: 3,
               stepDescription: "Add paneer, simmer, and finish with cream.",
             },
             {
-              foodId: 1,
               stepNumber: 4,
               stepDescription: "Garnish with fresh coriander and serve hot.",
             },

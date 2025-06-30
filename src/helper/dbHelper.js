@@ -31,6 +31,7 @@ const getValueByPathFromItem = (obj, path) => {
 };
 
 // Handle bulk insert placeholders: $<bulk:arrayKey(content)>
+// Supports mixed syntax: $[data.property] for root data, $[item.property] for array items, and legacy $[property]
 const resolveBulkInserts = (query, data) => {
   return query.replace(
     /\$<bulk:([^(]+)\(([^)]+)\)>/g,
@@ -53,9 +54,28 @@ const resolveBulkInserts = (query, data) => {
         const rowParts = parts.map((part) => {
           if (part.startsWith("$[") && part.endsWith("]")) {
             const path = part.slice(2, -1);
-            const value = getValueByPathFromItem(item, path);
-            if (value === undefined) {
-              throw new Error(`Missing ${path} in ${arrayKey}`);
+            let value;
+            
+            // Check for explicit root data syntax: $[data.property]
+            if (path.startsWith("data.")) {
+              value = getValueByPath(data, path);
+              if (value === undefined) {
+                throw new Error(`Missing ${path} in root data for ${arrayKey}`);
+              }
+            }
+            // Check for explicit item syntax: $[item.property]
+            else if (path.startsWith("item.")) {
+              const itemPath = path.slice(5); // Remove 'item.' prefix
+              value = getValueByPathFromItem(item, itemPath);
+              if (value === undefined) {
+                throw new Error(`Missing ${itemPath} in array item for ${arrayKey}`);
+              }
+            } else {
+              // Legacy syntax: $[property] (backward compatibility - looks in item)
+              value = getValueByPathFromItem(item, path);
+              if (value === undefined) {
+                throw new Error(`Missing ${path} in ${arrayKey}`);
+              }
             }
             return escapeLiteral(value);
           }
@@ -127,13 +147,29 @@ const resolveBulkUpsertsByKey = (query, data) => {
         if (requireAllKeys) {
           // ALL primary key fields must exist and be not null/undefined (AND logic)
           shouldUpdate = primaryKeyFields.every((field) => {
-            const value = getValueByPathFromItem(item, field);
+            let value;
+            // Check for explicit item syntax: item.property
+            if (field.startsWith("item.")) {
+              const itemPath = field.slice(5); // Remove 'item.' prefix
+              value = getValueByPathFromItem(item, itemPath);
+            } else {
+              // Legacy syntax: property (backward compatibility)
+              value = getValueByPathFromItem(item, field);
+            }
             return value !== null && value !== undefined;
           });
         } else {
           // AT LEAST ONE primary key field must exist and be not null/undefined (OR logic)
           shouldUpdate = primaryKeyFields.some((field) => {
-            const value = getValueByPathFromItem(item, field);
+            let value;
+            // Check for explicit item syntax: item.property
+            if (field.startsWith("item.")) {
+              const itemPath = field.slice(5); // Remove 'item.' prefix
+              value = getValueByPathFromItem(item, itemPath);
+            } else {
+              // Legacy syntax: property (backward compatibility)
+              value = getValueByPathFromItem(item, field);
+            }
             return value !== null && value !== undefined;
           });
         }
@@ -143,7 +179,19 @@ const resolveBulkUpsertsByKey = (query, data) => {
           const stmt = updateTemplate.replace(
             /\$\[([\w.\[\]]+)\]/g,
             (_, path) => {
-              const value = getValueByPathFromItem(item, path);
+              let value;
+              // Check for explicit root data syntax: $[data.property]
+              if (path.startsWith("data.")) {
+                value = getValueByPath(data, path);
+              }
+              // Check for explicit item syntax: $[item.property]
+              else if (path.startsWith("item.")) {
+                const itemPath = path.slice(5); // Remove 'item.' prefix
+                value = getValueByPathFromItem(item, itemPath);
+              } else {
+                // Legacy syntax: $[property] (backward compatibility - looks in item)
+                value = getValueByPathFromItem(item, path);
+              }
               // For UPDATE operations, allow missing values to become NULL
               return escapeLiteral(value);
             }
@@ -154,7 +202,19 @@ const resolveBulkUpsertsByKey = (query, data) => {
           const stmt = insertTemplate.replace(
             /\$\[([\w.\[\]]+)\]/g,
             (_, path) => {
-              const value = getValueByPathFromItem(item, path);
+              let value;
+              // Check for explicit root data syntax: $[data.property]
+              if (path.startsWith("data.")) {
+                value = getValueByPath(data, path);
+              }
+              // Check for explicit item syntax: $[item.property]
+              else if (path.startsWith("item.")) {
+                const itemPath = path.slice(5); // Remove 'item.' prefix
+                value = getValueByPathFromItem(item, itemPath);
+              } else {
+                // Legacy syntax: $[property] (backward compatibility - looks in item)
+                value = getValueByPathFromItem(item, path);
+              }
               // For INSERT operations, missing values become NULL
               return escapeLiteral(value);
             }
@@ -189,9 +249,27 @@ const resolveBulkUpserts = (query, data) => {
         const stmt = upsertTemplate.replace(
           /\$\[([\w.\[\]]+)\]/g,
           (_, path) => {
-            const value = getValueByPathFromItem(item, path);
-            if (value === undefined) {
-              throw new Error(`Missing value for key: ${path} in ${arrayKey}`);
+            let value;
+            // Check for explicit root data syntax: $[data.property]
+            if (path.startsWith("data.")) {
+              value = getValueByPath(data, path);
+              if (value === undefined) {
+                throw new Error(`Missing value for key: ${path} in root data for ${arrayKey}`);
+              }
+            }
+            // Check for explicit item syntax: $[item.property]
+            else if (path.startsWith("item.")) {
+              const itemPath = path.slice(5); // Remove 'item.' prefix
+              value = getValueByPathFromItem(item, itemPath);
+              if (value === undefined) {
+                throw new Error(`Missing value for key: ${itemPath} in array item for ${arrayKey}`);
+              }
+            } else {
+              // Legacy syntax: $[property] (backward compatibility - looks in item)
+              value = getValueByPathFromItem(item, path);
+              if (value === undefined) {
+                throw new Error(`Missing value for key: ${path} in ${arrayKey}`);
+              }
             }
             return escapeLiteral(value);
           }
@@ -225,9 +303,27 @@ const resolveMultiUpdates = (query, data) => {
         const stmt = updateTemplate.replace(
           /\$\[([\w.\[\]]+)\]/g,
           (_, path) => {
-            const value = getValueByPathFromItem(item, path);
-            if (value === undefined) {
-              throw new Error(`Missing value for key: ${path} in ${arrayKey}`);
+            let value;
+            // Check for explicit root data syntax: $[data.property]
+            if (path.startsWith("data.")) {
+              value = getValueByPath(data, path);
+              if (value === undefined) {
+                throw new Error(`Missing value for key: ${path} in root data for ${arrayKey}`);
+              }
+            }
+            // Check for explicit item syntax: $[item.property]
+            else if (path.startsWith("item.")) {
+              const itemPath = path.slice(5); // Remove 'item.' prefix
+              value = getValueByPathFromItem(item, itemPath);
+              if (value === undefined) {
+                throw new Error(`Missing value for key: ${itemPath} in array item for ${arrayKey}`);
+              }
+            } else {
+              // Legacy syntax: $[property] (backward compatibility - looks in item)
+              value = getValueByPathFromItem(item, path);
+              if (value === undefined) {
+                throw new Error(`Missing value for key: ${path} in ${arrayKey}`);
+              }
             }
             return escapeLiteral(value);
           }
@@ -251,10 +347,19 @@ const resolveSimplePlaceholders = (query, data) => {
   });
 };
 
-// Main function with explicit logical operator support
+// Main function with mixed syntax support and logical operators
 export const compileSQLTemplate = (templateQuery, data) => {
   // Process placeholders in order: bulk inserts → bulk upserts by key → bulk upserts → multi-updates → simple placeholders
-  // Note: bulkUpsertByKey requires array syntax: [field1 && field2], [field1 || field2], or [field1]
+  // 
+  // Supported syntax:
+  // - Root data access: $[data.property] - accesses properties from the root data object
+  // - Item data access: $[item.property] - accesses properties from current array item
+  // - Legacy syntax: $[property] - looks in current array item (backward compatibility)
+  // 
+  // Examples:
+  // - Mixed: $<bulk:$[data.ingredients]($[data.id], $[item.name], $[item.quantity])>
+  // - Keys: $<bulkUpsertByKey:$[data.items],[item.id && item.categoryId](...)>
+  // 
   let compiledQuery = resolveBulkInserts(templateQuery, data);
   compiledQuery = resolveBulkUpsertsByKey(compiledQuery, data);
   compiledQuery = resolveBulkUpserts(compiledQuery, data);
@@ -280,14 +385,14 @@ const insertCompiledQuery1 = compileSQLTemplate(insertTemplate1, insertData1);
 console.log("insertCompiledQuery1:", insertCompiledQuery1);
 */
 
-/**@insertExample2
+/**@insertExample2 - Mixed syntax: root data + item properties (recommended)
 const insertTemplate2 = `
 INSERT INTO ingredients ("foodId", name, quantity, unit) VALUES
-$<bulk:$[data.ingredients]('new_food_id', $[name], $[quantity], $[unit])>;
-;
+$<bulk:$[data.ingredients]($[data.id], $[item.name], $[item.quantity], $[item.unit])>;
 `;
 
 const insertData2 = {
+  id: 1, // Root data - food ID
   ingredients: [
     { name: "Paneer", quantity: "200", unit: "grams" },
     { name: "Butter", quantity: "2", unit: "tbsp" },
@@ -412,17 +517,17 @@ const upsertCompiledQuery2 = compileSQLTemplate(upsertTemplate2, upsertData2);
 console.log("upsertCompiledQuery2", upsertCompiledQuery2);
  */
 
-/**@bulkUpsertByKeyExample1 - Basic usage with 'id' primary key (AND logic)
+/**@bulkUpsertByKeyExample1 - Basic usage with explicit item syntax (recommended)
 const bulkUpsertByKeyTemplate1 = `
-$<bulkUpsertByKey:$[data.ingredients],[id && foodId](
+$<bulkUpsertByKey:$[data.ingredients],[item.id && item.foodId](
   INSERT INTO ingredients ("foodId", name, quantity, unit) 
-  VALUES ($[foodId], $[name], $[quantity], $[unit])
+  VALUES ($[item.foodId], $[item.name], $[item.quantity], $[item.unit])
 |
   UPDATE ingredients SET
-    name = $[name],
-    quantity = $[quantity],
-    unit = $[unit]
-  WHERE id = $[id] AND "foodId" = $[foodId]
+    name = $[item.name],
+    quantity = $[item.quantity],
+    unit = $[item.unit]
+  WHERE id = $[item.id] AND "foodId" = $[item.foodId]
 )>`;
 
 const bulkUpsertByKeyData1 = {
@@ -569,6 +674,49 @@ const bulkUpsertByKeyCompiledQuery6 = compileSQLTemplate(bulkUpsertByKeyTemplate
 console.log("bulkUpsertByKeyCompiledQuery6", bulkUpsertByKeyCompiledQuery6);
  */
 
+/**@bulkUpsertByKeyExample7 - Comprehensive example showing all explicit item syntax
+const comprehensiveTemplate = `
+-- Bulk inserts with explicit item syntax
+INSERT INTO products (category_id, name, price) VALUES
+$<bulk:$[data.products](1, $[item.name], $[item.price])>;
+
+-- Bulk upserts with explicit item syntax and logical operators
+$<bulkUpsertByKey:$[data.inventory],[item.productId && item.warehouseId](
+  INSERT INTO inventory (productId, warehouseId, quantity, lastUpdated) 
+  VALUES ($[item.productId], $[item.warehouseId], $[item.quantity], NOW())
+|
+  UPDATE inventory SET
+    quantity = $[item.quantity],
+    lastUpdated = NOW()
+  WHERE productId = $[item.productId] AND warehouseId = $[item.warehouseId]
+)>
+
+-- Multi-update with explicit item syntax
+$<multiUpdate:$[data.orders](
+  UPDATE orders SET status = $[item.status], updated_at = NOW() 
+  WHERE id = $[item.orderId]
+)>
+`;
+
+const comprehensiveData = {
+  products: [
+    { name: "Widget A", price: 19.99 },
+    { name: "Widget B", price: 29.99 },
+  ],
+  inventory: [
+    { productId: 1, warehouseId: 1, quantity: 100 },  // Both keys exist → UPDATE
+    { productId: 2, quantity: 50 },                   // Missing warehouseId → INSERT
+  ],
+  orders: [
+    { orderId: 1001, status: "shipped" },
+    { orderId: 1002, status: "delivered" },
+  ],
+};
+
+const comprehensiveCompiled = compileSQLTemplate(comprehensiveTemplate, comprehensiveData);
+console.log("comprehensiveCompiled", comprehensiveCompiled);
+ */
+
 /**@bulkUpsertByKeyExample7 - Comparison: AND vs OR vs Single field
 const bulkUpsertByKeyTemplate7a = `
 -- ALL keys must exist (AND logic)
@@ -620,4 +768,70 @@ console.log(compiled7b);
 console.log("=== Single field (userId required) ===");
 const compiled7c = compileSQLTemplate(bulkUpsertByKeyTemplate7c, bulkUpsertByKeyData7);
 console.log(compiled7c);
+ */
+
+/**@syntaxShowcase - Complete showcase of all supported syntax patterns
+const showcaseTemplate = `
+-- 1. Root data access only
+INSERT INTO categories (name, created_by) VALUES ($[data.categoryName], $[data.userId]);
+
+-- 2. Mixed syntax: root data + item properties (MOST COMMON)
+INSERT INTO products (category_id, name, price, created_by) VALUES
+$<bulk:$[data.products]($[data.categoryId], $[item.name], $[item.price], $[data.userId])>;
+
+-- 3. Bulk upserts with mixed syntax and logical operators
+$<bulkUpsertByKey:$[data.inventory],[item.id](
+  INSERT INTO inventory (product_id, warehouse_id, quantity, updated_by) 
+  VALUES ($[item.productId], $[data.warehouseId], $[item.quantity], $[data.userId])
+|
+  UPDATE inventory SET
+    quantity = $[item.quantity],
+    last_updated = NOW(),
+    updated_by = $[data.userId]
+  WHERE id = $[item.id]
+)>
+
+-- 4. Complex logical operators with mixed syntax
+$<bulkUpsertByKey:$[data.orders],[item.orderId && item.customerId](
+  INSERT INTO order_items (order_id, customer_id, product_id, quantity, created_by) 
+  VALUES ($[item.orderId], $[item.customerId], $[item.productId], $[item.quantity], $[data.userId])
+|
+  UPDATE order_items SET
+    quantity = $[item.quantity],
+    updated_by = $[data.userId]
+  WHERE order_id = $[item.orderId] AND customer_id = $[item.customerId]
+)>
+
+-- 5. Legacy syntax still works (item properties only)
+$<multiUpdate:$[data.statusUpdates](
+  UPDATE orders SET status = $[status], updated_by = $[data.userId] WHERE id = $[orderId]
+)>
+`;
+
+const showcaseData = {
+  userId: 100,
+  categoryId: 5,
+  categoryName: "Electronics",
+  warehouseId: 1,
+  products: [
+    { name: "Laptop", price: 999.99 },
+    { name: "Mouse", price: 29.99 },
+  ],
+  inventory: [
+    { id: 1, productId: 10, quantity: 50 },        // Has id → UPDATE
+    { productId: 11, quantity: 25 },              // No id → INSERT
+  ],
+  orders: [
+    { orderId: 1001, customerId: 201, productId: 10, quantity: 2 }, // Both keys → UPDATE
+    { orderId: 1002, productId: 11, quantity: 1 },                 // Missing customerId → INSERT
+  ],
+  statusUpdates: [
+    { orderId: 1001, status: "shipped" },
+    { orderId: 1002, status: "processing" },
+  ],
+};
+
+const showcaseCompiled = compileSQLTemplate(showcaseTemplate, showcaseData);
+console.log("🎯 Complete Syntax Showcase:");
+console.log(showcaseCompiled);
  */
